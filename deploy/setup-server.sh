@@ -14,11 +14,14 @@
 #               SSH_PORT=52022 adds the port next to the current one; after a
 #               login on it works, SSH_PORT=52022 SSH_CLOSE_OLD_PORT=1 closes the old one
 #   SSH_KEYS_ONLY=1  no password logins (only when root already has a key)
+#   ADMIN_EMAIL, ADMIN_NAME  the first manager of the cabinet (default buysun@gmail.com)
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-buysun.kz}"
 REPO_URL="${REPO_URL:-https://github.com/idrisqtt/buy-sun_landingpage.git}"
 BRANCH="${BRANCH:-main}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-buysun@gmail.com}"
+ADMIN_NAME="${ADMIN_NAME:-BUY SUN}"
 NODE_VERSION="24.22.1"
 APP_USER=buysun
 APP_DIR=/opt/buysun
@@ -179,6 +182,19 @@ systemctl enable buysun-api.service >/dev/null
 step "First deploy (takes a few minutes)"
 as_app "$APP_DIR/repo/deploy/update.sh" --force
 
+# The repository is public, so the password is never in it: it is made here,
+# shown once at the end and kept in a file only root and the app can read.
+# The cabinet asks to change it and to connect the phone code on first login.
+step "First manager of the cabinet: $ADMIN_EMAIL"
+FIRST_MANAGER="$APP_DIR/shared/first-manager.txt"
+if as_app "$APP_DIR/current/deploy/manager.sh" list | cut -f1 | grep -qxF "$ADMIN_EMAIL"; then
+  echo "already there"
+else
+  as_app "$APP_DIR/current/deploy/manager.sh" add "$ADMIN_EMAIL" "$ADMIN_NAME" > "$FIRST_MANAGER.new"
+  install -m 600 -o "$APP_USER" -g "$APP_USER" "$FIRST_MANAGER.new" "$FIRST_MANAGER"
+  rm -f "$FIRST_MANAGER.new"
+fi
+
 step "First backup (so the health check does not report \"no backups\" until the night)"
 ls "$BACKUP_DIR"/*/SHA256SUMS >/dev/null 2>&1 || systemctl start buysun-backup.service
 
@@ -261,3 +277,8 @@ echo "  2. Point $DOMAIN and www.$DOMAIN (A records) to this server; Caddy gets 
 echo "  3. Off-site backups: rclone config (as $APP_USER), set BACKUP_REMOTE, then run"
 echo "     sudo -u $APP_USER $APP_DIR/current/server/scripts/restore-test.sh --remote after the first night"
 echo "  4. Outside uptime monitor for https://$DOMAIN/api/health (deploy/README.md)"
+if [ -f "$FIRST_MANAGER" ]; then
+  echo
+  echo "Cabinet https://$DOMAIN/admin/  login $ADMIN_EMAIL  temporary password: $(sed -n 's/^Временный пароль: //p' "$FIRST_MANAGER")"
+  echo "  (also in $FIRST_MANAGER; delete that file after the first login)"
+fi
