@@ -276,7 +276,7 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates }) {
     } catch (err) { next(err) }
   })
 
-  router.put('/template', express.json({ limit: '2mb' }), loadSession, requireFull, async (req, res, next) => {
+  router.put('/template', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
     try {
       const template = await templates.save(partnerTemplateSchema.parse(req.body), req.user)
       logger.info('Partner template saved', { userId: req.user.id })
