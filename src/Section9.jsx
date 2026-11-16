@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { sendLead, honeypotProps } from './api'
+import { CONTACTS } from './contacts'
 import './Section9.css'
 
 function Section9() {
@@ -99,7 +100,8 @@ function Section9() {
                 variants={itemVariants}
               >
                 <div className="section9-contact-label">Почта</div>
-                <div className="section9-contact-value">BUYSUN.KZ@mail.ru</div>
+                {/* Shown with the name in capitals, as in the design */}
+                <div className="section9-contact-value">{CONTACTS.email.replace(/^[^@]+/, (name) => name.toUpperCase())}</div>
               </motion.div>
               <motion.div 
                 className="section9-contact-item"
@@ -107,8 +109,7 @@ function Section9() {
               >
                 <div className="section9-contact-label">Телефон</div>
                 <div className="section9-contact-value">
-                  <div>+77777599489</div>
-                  <div>+77026677171</div>
+                  {CONTACTS.phones.map((phone) => <div key={phone}>{phone}</div>)}
                 </div>
               </motion.div>
             </motion.div>

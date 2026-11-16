@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import ContactModal from './ContactModal'
 import ResumeModal from './ResumeModal'
+import { CONTACTS, whatsappUrl } from './contacts'
 import './Hero.css'
 
 function Hero() {
@@ -75,7 +76,7 @@ function Hero() {
               variants={containerVariants}
             >
               <motion.a 
-                href="https://t.me/buysunkz" 
+                href={CONTACTS.telegram} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -87,7 +88,7 @@ function Hero() {
                 <img src="/tg.png" alt="Telegram" />
               </motion.a>
               <motion.a 
-                href="https://www.tiktok.com/@buysun.kz" 
+                href={CONTACTS.tiktok} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -99,7 +100,7 @@ function Hero() {
                 <img src="/tt.png" alt="TikTok" />
               </motion.a>
               <motion.a 
-                href="https://wa.me/77026677171" 
+                href={whatsappUrl} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -111,7 +112,7 @@ function Hero() {
                 <img src="/wa.png" alt="WhatsApp" />
               </motion.a>
               <motion.a 
-                href="https://www.instagram.com/buysun.kz/" 
+                href={CONTACTS.instagram} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -124,12 +125,12 @@ function Hero() {
               </motion.a>
             </motion.div>
             <motion.a 
-              href="mailto:buysun.kz@mail.ru" 
+              href={`mailto:${CONTACTS.email}`} 
               className="hero-email"
               whileHover={{ opacity: 0.8, x: 5 }}
               variants={itemVariants}
             >
-              buysun.kz@mail.ru
+              {CONTACTS.email}
             </motion.a>
           </motion.div>
           <motion.div 

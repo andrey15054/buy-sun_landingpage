@@ -1,7 +1,9 @@
 // Sending forms to the BUY SUN server (server/ folder): it stores every lead
 // and passes it to Bitrix24 and to the work email.
 
-export const WHATSAPP_NUMBER = '77026677171'
+import { CONTACTS } from './contacts'
+
+export const WHATSAPP_NUMBER = CONTACTS.whatsapp
 export const whatsappLink = (text) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`
 
 const UTM_KEY = 'buysun-utm'
