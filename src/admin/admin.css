@@ -260,6 +260,9 @@ a { color: var(--cab-accent); }
 .cab-warn { color: #8a6100; }
 .cab-partner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }
 .cab-partner-status { color: var(--cab-muted); font-size: 14px; }
+.cab-partner-forms { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--cab-line); }
+.cab-partner-forms > div { flex: 1 1 320px; min-width: 0; }
+.cab-partner-forms .cab-hint { margin: 4px 0 0; }
 
 @media (max-width: 720px) {
   .cab-partner-grid { grid-template-columns: minmax(0, 1fr); }

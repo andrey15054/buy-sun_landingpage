@@ -152,6 +152,22 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
     }
   }
 
+  // TAYGA GRUP's own Word form, filled in (loaded only when asked: the form
+  // file and the zip code are not needed for anything else)
+  const downloadTayga = async () => {
+    setWorking('tayga')
+    setStatus(null)
+    try {
+      const { answers, photos } = build()
+      const { buildTaygaDocx, taygaFileName } = await import('./partnerForms/taygaDocx')
+      downloadBlob(await buildTaygaDocx(answers, photos), taygaFileName(answers))
+    } catch (err) {
+      setStatus({ ok: false, text: err.message?.startsWith('Бланк') ? err.message : 'Не удалось заполнить бланк TAYGA. Попробуйте ещё раз.' })
+    } finally {
+      setWorking('')
+    }
+  }
+
   const save = async () => {
     if (!draft.name.trim()) return setStatus({ ok: false, text: 'Укажите название партнёра, чтобы сохранить шаблон.' })
     if (saved && saved.name !== draft.name.trim()
@@ -248,6 +264,16 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
         </span>
         {saved && !changed && <button type="button" className="cab-link" onClick={remove}>Удалить шаблон</button>}
         {saved && changed && <button type="button" className="cab-link" onClick={() => { applyTemplate(saved); setStatus(null) }}>Вернуть сохранённый</button>}
+      </div>
+
+      <div className="cab-partner-forms">
+        <div>
+          <span className="cab-preview-title">Бланк партнёра в его оформлении</span>
+          <p className="cab-hint">Собственный бланк TAYGA GRUP (Word), заполненный ответами и фото кандидата. Перед отправкой его можно поправить в Word; строку PC skills анкета не спрашивает — её заполняют вручную.</p>
+        </div>
+        <button type="button" className="cab-btn secondary" onClick={downloadTayga} disabled={waiting || Boolean(working)}>
+          {working === 'tayga' ? 'Заполняем бланк…' : 'Анкета TAYGA GRUP (Word)'}
+        </button>
       </div>
     </section>
   )

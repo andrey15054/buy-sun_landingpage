@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "fflate": "0.8.3",
     "framer-motion": "^12.25.0",
     "heic-to": "1.6.6",
     "html2canvas": "^1.4.1",

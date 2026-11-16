@@ -109,6 +109,9 @@ in the text, the font name or the file name), and the BUY SUN manager’s name
 is left out. One template is saved for all managers (TAYGA GRUP is there from the start;
 any manager can replace it) and is part of the nightly
 database backup.
+The button «Анкета TAYGA GRUP (Word)» fills TAYGA's own CV form
+(`src/admin/partnerForms/tayga.docx`) with the anketa and the photo; their
+layout stays as is, and the file can still be edited in Word.
 
 ## Everyday
 
