@@ -5,6 +5,8 @@ const path = require('path')
 const { normalizePhone, decodeDataUrl } = require('../src/utils/validation')
 const { loadConfig } = require('../src/config')
 const { deleteOldLeads } = require('../src/services/cleanup')
+const { EventEmitter } = require('events')
+const { oneAtATime } = require('../src/routes/leads')
 const { startTestApp, anketaPayload, JPEG } = require('./helpers')
 
 describe('normalizePhone', () => {
@@ -65,5 +67,27 @@ describe('deleteOldLeads', () => {
     assert.equal(await t.prisma.leadFile.count({ where: { lead_id: oldLead.id } }), 0)
     assert.ok(!fs.existsSync(path.join(t.uploadDir, 'leads', String(oldLead.id))))
     assert.ok(fs.existsSync(path.join(t.uploadDir, 'leads', String(newLead.id))))
+  })
+})
+
+describe('oneAtATime (anketas taken a few at a time)', () => {
+  const fake = () => { const req = new EventEmitter(); const res = new EventEmitter(); req.destroyed = false; res.destroyed = false; return { req, res } }
+
+  it('lets the next one in when one finishes, and skips one that left while waiting', () => {
+    const gate = oneAtATime(1)
+    const started = []
+    const a = fake(), b = fake(), c = fake()
+    gate(a.req, a.res, () => started.push('a'))
+    gate(b.req, b.res, () => started.push('b'))
+    gate(c.req, c.res, () => started.push('c'))
+    assert.deepEqual(started, ['a'])
+    // b's person closed the page while waiting
+    b.req.destroyed = true; b.res.destroyed = true; b.res.emit('close')
+    a.res.emit('finish'); a.res.emit('close')
+    assert.deepEqual(started, ['a', 'c'], 'b is skipped and does not hold the slot')
+    c.res.emit('finish')
+    const d = fake()
+    gate(d.req, d.res, () => started.push('d'))
+    assert.deepEqual(started, ['a', 'c', 'd'], 'the slot is free again')
   })
 })

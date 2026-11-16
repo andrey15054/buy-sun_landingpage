@@ -209,6 +209,20 @@ describe('when Bitrix24 or email fail', () => {
     assert.equal(lead.email_error, 'SMTP down')
     assert.equal(lead.bitrix_status, 'sent')
   })
+
+  it('tries failed leads again when the service is back, without a second Bitrix24 lead or a second email', async () => {
+    const addsBefore = t.bitrixServer.calls.filter((c) => c.method === 'crm.lead.add').length
+    const mailsBefore = t.mails.length
+    // From the tests above: Bitrix24 down, files not attached, email down
+    assert.equal(await t.prisma.lead.count({ where: { OR: [{ bitrix_status: 'failed' }, { email_status: 'failed' }] } }), 3)
+    assert.equal(await t.delivery.retryFailed(), 0, 'not before 10 minutes have passed')
+    assert.equal(await t.delivery.retryFailed({ everyMs: 0 }), 3)
+    await t.settle()
+    assert.equal(await t.prisma.lead.count({ where: { OR: [{ bitrix_status: 'failed' }, { email_status: 'failed' }] } }), 0)
+    const adds = t.bitrixServer.calls.filter((c) => c.method === 'crm.lead.add').length - addsBefore
+    assert.equal(adds, 1, 'only the lead Bitrix24 never got is created there; the one with its id gets just the files')
+    assert.equal(t.mails.length - mailsBefore, 1, 'only the lead whose email failed is emailed again')
+  })
 })
 
 describe('without integrations configured', () => {

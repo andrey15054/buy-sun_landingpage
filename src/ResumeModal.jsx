@@ -675,6 +675,9 @@ function ResumeModal({ isOpen, onClose }) {
         },
       })
       setSendStatus('sent')
+      // Sent: answers and photos no longer wait on this device (a shared or
+      // family phone would show them to the next person)
+      clearDraft()
     } catch (err) {
       setSendError(err.message)
       setSendStatus('error')

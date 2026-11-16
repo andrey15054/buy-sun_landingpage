@@ -10,22 +10,27 @@ const { logger } = require('../utils/logger')
 function oneAtATime(max) {
   let active = 0
   const waiting = []
-  const release = () => {
-    active--
-    const next = waiting.shift()
-    if (next) next()
+  const pump = () => {
+    while (active < max && waiting.length) waiting.shift()()
   }
   return (req, res, next) => {
+    let state = 'waiting' // waiting -> running -> done
     const start = () => {
+      if (state !== 'waiting') return
+      // The person closed the page while waiting: nothing to read any more
+      if (req.destroyed || res.destroyed) { state = 'done'; return }
+      state = 'running'
       active++
-      let released = false
-      const done = () => { if (!released) { released = true; release() } }
-      res.on('finish', done)
-      res.on('close', done)
       next()
     }
-    if (active < max) start()
-    else waiting.push(start)
+    const finish = () => {
+      if (state === 'running') { state = 'done'; active--; pump() }
+      else if (state === 'waiting') { state = 'done'; const i = waiting.indexOf(start); if (i >= 0) waiting.splice(i, 1) }
+    }
+    res.on('finish', finish)
+    res.on('close', finish)
+    waiting.push(start)
+    pump()
   }
 }
 
@@ -79,4 +84,4 @@ function leadsRouter({ config, leads, delivery }) {
   return router
 }
 
-module.exports = { leadsRouter }
+module.exports = { leadsRouter, oneAtATime }

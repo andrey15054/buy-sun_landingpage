@@ -21,7 +21,7 @@ try {
 const prisma = createPrisma(config.databaseUrl)
 const storage = createStorage(config.uploadDir)
 const bitrix = config.bitrix ? createBitrix(config.bitrix) : null
-const mailer = config.mail ? createMailer(config.mail) : null
+const mailer = config.mail?.to ? createMailer(config.mail) : null
 if (!bitrix) logger.warn('BITRIX_WEBHOOK_URL is not set: leads will not go to Bitrix24')
 if (!mailer) logger.warn('SMTP_HOST or LEADS_EMAIL_TO is not set: no email copies of leads')
 
@@ -32,6 +32,8 @@ const stopCleanup = scheduleCleanup({ prisma, storage, retentionDays: config.ret
 const server = app.listen(config.port, config.host, () => {
   logger.info('BUY SUN API started', { host: config.host, port: config.port, env: config.env })
   delivery.resumePending().catch((err) => logger.error('Could not resume deliveries', { error: err.message }))
+  // Leads that did not reach Bitrix24 or email (a service was down) are tried again
+  setInterval(() => delivery.retryFailed().catch((err) => logger.error('Could not retry deliveries', { error: err.message })), 5 * 60 * 1000).unref()
 })
 
 async function shutdown(signal) {

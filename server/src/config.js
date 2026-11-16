@@ -54,7 +54,9 @@ function loadConfig(env = process.env) {
     bitrix: e.BITRIX_WEBHOOK_URL
       ? { webhookUrl: e.BITRIX_WEBHOOK_URL.replace(/\/$/, ''), assignedById: e.BITRIX_ASSIGNED_BY_ID }
       : null,
-    mail: e.SMTP_HOST && e.LEADS_EMAIL_TO
+    // With SMTP alone the server can still send problem alerts (ALERT_EMAIL_TO);
+    // lead copies need LEADS_EMAIL_TO
+    mail: e.SMTP_HOST
       ? {
           transport: {
             host: e.SMTP_HOST,
@@ -63,7 +65,7 @@ function loadConfig(env = process.env) {
             auth: e.SMTP_USER ? { user: e.SMTP_USER, pass: e.SMTP_PASS } : undefined,
           },
           from: e.MAIL_FROM || e.SMTP_USER,
-          to: e.LEADS_EMAIL_TO,
+          to: e.LEADS_EMAIL_TO || null,
         }
       : null,
     retentionDays: e.RETENTION_DAYS ?? null,

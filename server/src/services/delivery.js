@@ -51,13 +51,14 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
     }
   }
 
-  // Only the parts still pending: after a restart a lead already in Bitrix24
-  // is not sent there again
-  async function deliver(leadId) {
+  // Only the parts still to do: after a restart a lead already in Bitrix24 is
+  // not sent there again. A retry also takes the parts that failed before.
+  async function deliver(leadId, { retry = false } = {}) {
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { files: true } })
     if (!lead) return
-    const toBitrixNow = lead.bitrix_status === 'pending'
-    const toEmailNow = lead.email_status === 'pending'
+    const due = (status) => status === 'pending' || (retry && status === 'failed')
+    const toBitrixNow = due(lead.bitrix_status)
+    const toEmailNow = due(lead.email_status)
     if (!toBitrixNow && !toEmailNow) return
     const files = await loadFiles(lead)
     const [bitrixResult, emailResult] = await Promise.all([
@@ -69,6 +70,7 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
   }
 
   const queue = []
+  const retries = new Set()
   let running = null
 
   function kick() {
@@ -77,7 +79,7 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
       while (queue.length) {
         const leadId = queue.shift()
         try {
-          await deliver(leadId)
+          await deliver(leadId, { retry: retries.delete(leadId) })
         } catch (err) {
           logger.error('Delivery crashed', { leadId, error: shortError(err) })
         }
@@ -108,6 +110,24 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
       for (const { id } of pending) this.enqueue(id)
       if (pending.length) logger.info('Sending leads left from before the restart', { count: pending.length })
       return pending.length
+    },
+
+    // Bitrix24 or the mail server was down: leads that failed in the last day
+    // are tried again, at most every 10 minutes (the last try is updated_at)
+    async retryFailed({ withinMs = 24 * 60 * 60 * 1000, everyMs = 10 * 60 * 1000 } = {}) {
+      const now = Date.now()
+      const failed = await prisma.lead.findMany({
+        where: {
+          OR: [{ bitrix_status: 'failed' }, { email_status: 'failed' }],
+          created_at: { gt: new Date(now - withinMs) },
+          updated_at: { lte: new Date(now - everyMs) },
+        },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+      for (const { id } of failed) { retries.add(id); this.enqueue(id) }
+      if (failed.length) logger.info('Trying again leads that failed to send', { count: failed.length })
+      return failed.length
     },
 
     // Resolves when the queue is empty (shutdown, tests)

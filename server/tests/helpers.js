@@ -86,7 +86,7 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
     },
   }
   const bitrix = config.bitrix ? createBitrix(config.bitrix) : null
-  const mailer = config.mail ? createMailer(config.mail, { transporter }) : null
+  const mailer = config.mail?.to ? createMailer(config.mail, { transporter }) : null
 
   const delivery = createDelivery({ prisma, storage, bitrix, mailer })
 
