@@ -194,7 +194,9 @@ function ResumeModal({ isOpen, onClose }) {
 
   const startOver = () => {
     if (!window.confirm(t.startOverConfirm)) return
-    photoJobs.current = {} // results of photos still being processed are ignored
+    // Photos still being processed are ignored: their job numbers move on
+    // (a reset to 0 would let an old photo match a new one's number again)
+    for (const name of Object.keys(photoJobs.current)) photoJobs.current[name] += 1
     savedPhotos.current = {}
     setFormData(emptyForm)
     setPhotoStatus({})
