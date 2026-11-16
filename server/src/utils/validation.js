@@ -22,7 +22,7 @@ const phone = z.string().max(40).transform((value, ctx) => {
   return normalized
 })
 
-const text = (max) => z.string().trim().max(max)
+const text = (max) => z.string().trim().max(max, `Слишком длинный ответ: не больше ${max} символов. Сократите его и отправьте ещё раз.`)
 
 const utm = z.object({
   utm_source: text(200).optional(),

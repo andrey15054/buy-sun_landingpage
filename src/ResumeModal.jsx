@@ -1,3 +1,4 @@
+import { maxLength } from './anketaLimits'
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import jsPDF from 'jspdf'
@@ -866,29 +867,29 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   <div className="form-row">
                     <div className="form-group">
                       <label>Имя (на англ.)</label>
-                      <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Введите ваше имя" required />
+                      <input type="text" name="firstName" maxLength={maxLength('firstName')} value={formData.firstName} onChange={handleChange} placeholder="Введите ваше имя" required />
                     </div>
                     <div className="form-group">
                       <label>Фамилия (на англ.)</label>
-                      <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Введите вашу фамилию" required />
+                      <input type="text" name="lastName" maxLength={maxLength('lastName')} value={formData.lastName} onChange={handleChange} placeholder="Введите вашу фамилию" required />
                     </div>
                   </div>
                   
                   <div className="form-row">
                     <div className="form-group">
                       <label>Номер телефона</label>
-                      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Введите ваш номер телефона" required />
+                      <input type="tel" name="phone" maxLength={maxLength('phone')} value={formData.phone} onChange={handleChange} placeholder="Введите ваш номер телефона" required />
                     </div>
                     <div className="form-group">
                       <label>Email</label>
-                      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Введите ваш email" required />
+                      <input type="email" name="email" maxLength={maxLength('email')} value={formData.email} onChange={handleChange} placeholder="Введите ваш email" required />
                     </div>
                   </div>
                   
                   <div className="form-row">
                     <div className="form-group">
                       <label>Город проживания (на английском)</label>
-                      <input type="text" name="city" value={formData.city} onChange={handleChange} placeholder="e.g. Almaty, Astana" required />
+                      <input type="text" name="city" maxLength={maxLength('city')} value={formData.city} onChange={handleChange} placeholder="e.g. Almaty, Astana" required />
                     </div>
                     <div className="form-row-inline">
                       <div className="form-group">
@@ -914,11 +915,11 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     </div>
                     <div className="form-group">
                       <label>Гражданство (на английском)</label>
-                      <input type="text" name="citizenship" value={formData.citizenship} onChange={handleChange} placeholder="e.g. Kazakhstan, Russia" required />
+                      <input type="text" name="citizenship" maxLength={maxLength('citizenship')} value={formData.citizenship} onChange={handleChange} placeholder="e.g. Kazakhstan, Russia" required />
                     </div>
                     <div className="form-group">
                       <label>Национальность (на английском)</label>
-                      <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} placeholder="e.g. Kazakh, Russian" required />
+                      <input type="text" name="nationality" maxLength={maxLength('nationality')} value={formData.nationality} onChange={handleChange} placeholder="e.g. Kazakh, Russian" required />
                     </div>
                     <div className="form-group">
                       <label>Пол</label>
@@ -985,7 +986,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   <div className="form-row">
                     <div className="form-group">
                       <label>Дополнительный язык</label>
-                      <input type="text" name="additionalLanguage" value={formData.additionalLanguage} onChange={handleChange} />
+                      <input type="text" name="additionalLanguage" maxLength={maxLength('additionalLanguage')} value={formData.additionalLanguage} onChange={handleChange} />
                     </div>
                     <div className="form-group">
                       <label>Уровень владения дополнительным языком</label>
@@ -1007,13 +1008,13 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   <div className="form-row">
                     <div className="form-group">
                       <label>Учебное учреждение (на англ.)</label>
-                      <input type="text" name="institution" value={formData.institution} onChange={handleChange} placeholder="Введите название учебного учреждения" />
+                      <input type="text" name="institution" maxLength={maxLength('institution')} value={formData.institution} onChange={handleChange} placeholder="Введите название учебного учреждения" />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Специальность (на англ.)</label>
-                      <input type="text" name="specialty" value={formData.specialty} onChange={handleChange} placeholder="Введите специальность" />
+                      <input type="text" name="specialty" maxLength={maxLength('specialty')} value={formData.specialty} onChange={handleChange} placeholder="Введите специальность" />
                     </div>
                   </div>
                   <div className="form-row">
@@ -1029,7 +1030,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   <div className="form-row">
                     <div className="form-group">
                       <label>Менеджер (имя консультанта)</label>
-                      <input type="text" name="manager" value={formData.manager} onChange={handleChange} placeholder="Имя менеджера, который вас консультировал" />
+                      <input type="text" name="manager" maxLength={maxLength('manager')} value={formData.manager} onChange={handleChange} placeholder="Имя менеджера, который вас консультировал" />
                     </div>
                   </div>
                 </section>
@@ -1042,7 +1043,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>
-                        <input type="text" name="company1" value={formData.company1} onChange={handleChange} placeholder="Введите название компании" />
+                        <input type="text" name="company1" maxLength={maxLength('company1')} value={formData.company1} onChange={handleChange} placeholder="Введите название компании" />
                       </div>
                       <div className="form-group">
                         <label>Страна компании</label>
@@ -1058,7 +1059,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Должность (на англ.)</label>
-                        <input type="text" name="position1" value={formData.position1} onChange={handleChange} placeholder="Введите должность" />
+                        <input type="text" name="position1" maxLength={maxLength('position1')} value={formData.position1} onChange={handleChange} placeholder="Введите должность" />
                       </div>
                       <div className="form-row-inline">
                         <div className="form-group">
@@ -1078,7 +1079,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>
-                        <input type="text" name="company2" value={formData.company2} onChange={handleChange} />
+                        <input type="text" name="company2" maxLength={maxLength('company2')} value={formData.company2} onChange={handleChange} />
                       </div>
                       <div className="form-group">
                         <label>Страна компании</label>
@@ -1094,7 +1095,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Должность (на англ.)</label>
-                        <input type="text" name="position2" value={formData.position2} onChange={handleChange} />
+                        <input type="text" name="position2" maxLength={maxLength('position2')} value={formData.position2} onChange={handleChange} />
                       </div>
                       <div className="form-row-inline">
                         <div className="form-group">
@@ -1114,7 +1115,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>
-                        <input type="text" name="company3" value={formData.company3} onChange={handleChange} />
+                        <input type="text" name="company3" maxLength={maxLength('company3')} value={formData.company3} onChange={handleChange} />
                       </div>
                       <div className="form-group">
                         <label>Страна компании</label>
@@ -1130,7 +1131,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     <div className="form-row">
                       <div className="form-group">
                         <label>Должность (на англ.)</label>
-                        <input type="text" name="position3" value={formData.position3} onChange={handleChange} />
+                        <input type="text" name="position3" maxLength={maxLength('position3')} value={formData.position3} onChange={handleChange} />
                       </div>
                       <div className="form-row-inline">
                         <div className="form-group">
@@ -1234,21 +1235,21 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   <div className="form-row">
                     <div className="form-group">
                       <label>Имя отца (на англ.)</label>
-                      <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} placeholder="Введите имя отца" required />
+                      <input type="text" name="fatherName" maxLength={maxLength('fatherName')} value={formData.fatherName} onChange={handleChange} placeholder="Введите имя отца" required />
                     </div>
                     <div className="form-group">
                       <label>Имя матери (на англ.)</label>
-                      <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} placeholder="Введите имя матери" required />
+                      <input type="text" name="motherName" maxLength={maxLength('motherName')} value={formData.motherName} onChange={handleChange} placeholder="Введите имя матери" required />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Ваши хобби</label>
-                      <input type="text" name="hobbies" value={formData.hobbies} onChange={handleChange} placeholder="Введите ваши хобби" required />
+                      <input type="text" name="hobbies" maxLength={maxLength('hobbies')} value={formData.hobbies} onChange={handleChange} placeholder="Введите ваши хобби" required />
                     </div>
                     <div className="form-group">
                       <label>Пройденные курсы или сертификаты</label>
-                      <input type="text" name="courses" value={formData.courses} onChange={handleChange} placeholder="Введите курсы" required />
+                      <input type="text" name="courses" maxLength={maxLength('courses')} value={formData.courses} onChange={handleChange} placeholder="Введите курсы" required />
                     </div>
                   </div>
                 </section>
@@ -1294,7 +1295,7 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                   />
                   <div className="form-group">
                     <label>Логин в Instagram (без @)</label>
-                    <input type="text" name="instagram" value={formData.instagram} onChange={handleChange} placeholder="Введите ваш логин в Instagram" />
+                    <input type="text" name="instagram" maxLength={maxLength('instagram')} value={formData.instagram} onChange={handleChange} placeholder="Введите ваш логин в Instagram" />
                   </div>
                   <div className="form-group">
                     <label>Откуда вы о нас узнали?</label>
