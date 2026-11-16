@@ -10,6 +10,11 @@ export const CONTACTS = {
   telegram: 'https://t.me/buysunkz',
   tiktok: 'https://www.tiktok.com/@buysun.kz',
   instagram: 'https://www.instagram.com/buysun.kz/',
+  // Offices in the «Сделаем вашу мечту реальностью!» block
+  offices: [
+    { city: 'Алматы', address: 'БЦ Кунаев 5 этаж 518 офис' },
+    { city: 'Астана', address: 'Кенесары 40, 21 этаж 2100 офис' },
+  ],
 }
 
 export const whatsappUrl = `https://wa.me/${CONTACTS.whatsapp}`

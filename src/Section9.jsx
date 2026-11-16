@@ -117,20 +117,16 @@ function Section9() {
               className="section9-contact-column"
               variants={containerVariants}
             >
-              <motion.div 
-                className="section9-contact-item"
-                variants={itemVariants}
-              >
-                <div className="section9-contact-label">Адрес г. Алматы</div>
-                <div className="section9-contact-value">БЦ Кунаев 5 этаж 518 офис</div>
-              </motion.div>
-              <motion.div 
-                className="section9-contact-item"
-                variants={itemVariants}
-              >
-                <div className="section9-contact-label">Адрес г. Астана</div>
-                <div className="section9-contact-value">Кенесары 40, 21 этаж 2100 офис</div>
-              </motion.div>
+              {CONTACTS.offices.map((office) => (
+                <motion.div
+                  key={office.city}
+                  className="section9-contact-item"
+                  variants={itemVariants}
+                >
+                  <div className="section9-contact-label">Адрес г. {office.city}</div>
+                  <div className="section9-contact-value">{office.address}</div>
+                </motion.div>
+              ))}
             </motion.div>
           </motion.div>
 
