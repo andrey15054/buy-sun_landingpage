@@ -74,6 +74,25 @@ describe('cabinet login', () => {
     assert.equal(locked.status, 423)
   })
 
+  it('does not let wrong passwords sent in parallel get past the 5-attempt limit', async () => {
+    await addManager(t, 'parallel@buysun.test')
+    const tries = await Promise.all(Array.from({ length: 15 }, (_, i) =>
+      t.cabinet().call('POST', '/api/admin/login', { email: 'parallel@buysun.test', password: `wrong-${i}` })))
+    const checked = tries.filter((r) => r.status === 401).length
+    assert.ok(checked <= 5, `only 5 passwords may be checked, ${checked} were`)
+    assert.equal(tries.filter((r) => r.status === 423).length, 15 - checked)
+    assert.equal((await t.cabinet().call('POST', '/api/admin/login', { email: 'parallel@buysun.test', password: TEMP })).status, 423, 'locked even for the right password')
+  })
+
+  it('checks the login before reading a big body', async () => {
+    const res = await fetch(`${t.base}/api/admin/leads/1`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'buysun-admin', Origin: 'https://buysun.kz' },
+      body: '{"broken json',
+    })
+    assert.equal(res.status, 401, 'refused for the missing login, not for the body')
+  })
+
   it('gives the same answer for an unknown email and a wrong password', async () => {
     const unknown = await t.cabinet().call('POST', '/api/admin/login', { email: 'nobody@buysun.test', password: 'x' })
     assert.equal(unknown.status, 401)

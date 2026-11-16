@@ -131,7 +131,7 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
   }
 
   return {
-    config, prisma, storage, uploadDir, bitrixServer, mails, mailBehaviour, post, settle, delivery, cabinet,
+    config, prisma, storage, uploadDir, bitrixServer, mails, mailBehaviour, post, settle, delivery, cabinet, base,
     async close() {
       await new Promise((resolve) => server.close(resolve))
       bitrixServer.close()

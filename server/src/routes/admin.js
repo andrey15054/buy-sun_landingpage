@@ -70,13 +70,26 @@ function adminRouter({ config, prisma, storage, leadAdmin }) {
     message: { error: 'Слишком много попыток. Попробуйте через 15 минут.' },
   })
 
-  async function registerFailure(user, reason, req) {
-    const attempts = user.failed_attempts + 1
-    const locked = attempts >= MAX_ATTEMPTS
-    await prisma.user.update({
+  const LOCKED = 'Слишком много неудачных попыток. Попробуйте через 15 минут.'
+
+  // An attempt is counted before it is checked, in one statement, so guesses
+  // sent in parallel cannot all start from the same count: one past the limit
+  // is refused without checking the password or code
+  async function takeAttempt(user) {
+    const { failed_attempts: attempts } = await prisma.user.update({
       where: { id: user.id },
-      data: { failed_attempts: locked ? 0 : attempts, locked_until: locked ? new Date(Date.now() + LOCK_MS) : undefined },
+      data: { failed_attempts: { increment: 1 } },
+      select: { failed_attempts: true },
     })
+    if (attempts > MAX_ATTEMPTS) throw fail(423, LOCKED)
+    return attempts
+  }
+
+  async function registerFailure(user, attempts, reason, req) {
+    const locked = attempts >= MAX_ATTEMPTS
+    if (locked) {
+      await prisma.user.update({ where: { id: user.id }, data: { failed_attempts: 0, locked_until: new Date(Date.now() + LOCK_MS) } })
+    }
     logger.security(locked ? 'Cabinet account locked for 15 minutes' : 'Cabinet login failed', { userId: user.id, reason, ip: req.ip })
   }
 
@@ -122,11 +135,14 @@ function adminRouter({ config, prisma, storage, leadAdmin }) {
         logger.security('Cabinet login failed', { reason: 'unknown email', ip: req.ip })
         throw fail(401, 'Неверный email или пароль')
       }
-      if (isLocked(user)) throw fail(423, 'Слишком много неудачных попыток. Попробуйте через 15 минут.')
+      if (isLocked(user)) throw fail(423, LOCKED)
+      const attempts = await takeAttempt(user)
       if (!(await auth.verifyPassword(password, user.password_hash))) {
-        await registerFailure(user, 'password', req)
+        await registerFailure(user, attempts, 'password', req)
         throw fail(401, 'Неверный email или пароль')
       }
+      // The right password does not count; the counter is reset by the right code
+      await prisma.user.update({ where: { id: user.id }, data: { failed_attempts: { decrement: 1 } } })
       const token = auth.newToken()
       const session = await prisma.session.create({
         data: { token_hash: auth.hashToken(token), user_id: user.id, expires_at: new Date(Date.now() + PENDING_MS) },
@@ -173,10 +189,11 @@ function adminRouter({ config, prisma, storage, leadAdmin }) {
       if (user.must_change_password || !user.totp_secret || (setup ? user.totp_enabled : !user.totp_enabled)) {
         throw fail(400, 'Сначала выполните предыдущий шаг')
       }
-      if (isLocked(user)) throw fail(423, 'Слишком много неудачных попыток. Попробуйте через 15 минут.')
+      if (isLocked(user)) throw fail(423, LOCKED)
+      const attempts = await takeAttempt(user)
       const step = auth.checkTotp(user.totp_secret, user.email, code, user.totp_last_step)
       if (step === null) {
-        await registerFailure(user, 'code', req)
+        await registerFailure(user, attempts, 'code', req)
         throw fail(401, 'Неверный код. Введите новый код из приложения.')
       }
       const updated = await prisma.user.update({
@@ -241,7 +258,9 @@ function adminRouter({ config, prisma, storage, leadAdmin }) {
   })
 
   // PDF up to 8 MB and three photos up to 4 MB each, base64 adds a third
-  router.put('/leads/:id', express.json({ limit: '28mb' }), loadSession, requireFull, async (req, res, next) => {
+  // The login is checked before the body is read: without one, nobody can make
+  // the server take in 28 MB
+  router.put('/leads/:id', loadSession, requireFull, express.json({ limit: '28mb' }), async (req, res, next) => {
     try {
       const data = anketaEditSchema.parse(req.body)
       const lead = await leadAdmin.update(leadId(req), data, req.user)

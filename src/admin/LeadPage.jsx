@@ -14,6 +14,7 @@ const PHOTO_TEXTS = {
   format: 'Не удалось открыть файл. Выберите фото JPG или PNG.',
   heic: 'Не удалось обработать HEIC. Сохраните фото как JPG.',
   tooLarge: 'Фото слишком большое.',
+  load: 'Фото не загрузилось. Обновите страницу: без него новый PDF не создаётся.',
 }
 
 // A stored photo as the PDF builder needs it, without re-compressing it
@@ -116,7 +117,7 @@ function AnketaEditor({ lead, onSaved, onError }) {
       setPhotoStatus((s) => ({ ...s, [name]: { busy: true } }))
       loadStoredPhoto(lead.id, file)
         .then((photo) => { if (!cancelled) { setPhotos((p) => ({ ...p, [name]: photo })); setPhotoStatus((s) => ({ ...s, [name]: {} })) } })
-        .catch(() => { if (!cancelled) setPhotoStatus((s) => ({ ...s, [name]: { error: 'format' } })) })
+        .catch(() => { if (!cancelled) setPhotoStatus((s) => ({ ...s, [name]: { error: 'load' } })) })
     }
     return () => { cancelled = true }
   }, [lead.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -167,6 +168,8 @@ function AnketaEditor({ lead, onSaved, onError }) {
   }
 
   const busy = Object.values(photoStatus).some((s) => s.busy)
+  // A stored photo did not load: a new PDF would go without it, so nothing is built
+  const loadFailed = Object.values(photoStatus).some((s) => s.error === 'load')
 
   const save = async (e) => {
     e.preventDefault()
@@ -224,10 +227,11 @@ function AnketaEditor({ lead, onSaved, onError }) {
 
       <div className={`cab-savebar${dirty ? ' dirty' : ''}`}>
         <span role="status">
-          {message ? <span className={message.ok ? 'cab-ok' : 'cab-error'}>{message.text}</span>
+          {loadFailed ? <span className="cab-error">Не загрузилось фото анкеты — обновите страницу</span>
+            : message ? <span className={message.ok ? 'cab-ok' : 'cab-error'}>{message.text}</span>
             : dirty ? 'Есть несохранённые изменения' : 'Изменений нет'}
         </span>
-        <button className="cab-btn" disabled={!dirty || saving || busy}>
+        <button className="cab-btn" disabled={!dirty || saving || busy || loadFailed}>
           {saving ? 'Сохраняем и создаём PDF…' : 'Сохранить и обновить PDF'}
         </button>
       </div>
