@@ -1,12 +1,12 @@
-# Shared settings for backup scripts. Reads server/.env unless ENV_FILE points elsewhere.
+# Shared settings for backup scripts: server/.env on a developer's machine, the
+# server's own settings file on the server (ENV_FILE points elsewhere)
 SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${ENV_FILE:-$SERVER_DIR/.env}"
-if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "$ENV_FILE"
-  set +a
+. "$SERVER_DIR/../deploy/load-env.sh"
+if [ -z "${ENV_FILE:-}" ]; then
+  ENV_FILE="$SERVER_DIR/.env"
+  [ -f "$ENV_FILE" ] || ENV_FILE=/opt/buysun/shared/server.env
 fi
+load_env "$ENV_FILE"
 
 : "${DATABASE_URL:?DATABASE_URL is not set}"
 : "${UPLOAD_DIR:?UPLOAD_DIR is not set}"

@@ -13,6 +13,9 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/buysun}"
+# Run by the timer the settings come from systemd; run by hand they are read here
+. "$(dirname "$0")/load-env.sh"
+[ -n "${DATABASE_URL:-}" ] || load_env "$APP_DIR/shared/server.env"
 REPO="$APP_DIR/repo"
 BRANCH="${DEPLOY_BRANCH:-main}"
 RELEASES="$APP_DIR/releases"
@@ -35,10 +38,14 @@ current="$(cat "$APP_DIR/current/COMMIT" 2>/dev/null || echo none)"
 if [ "$target" = "$current" ] && [ "${1:-}" != "--force" ]; then
   exit 0
 fi
-# A version whose API did not start is not tried again every 5 minutes (each
-# try stops the forms for half a minute): it waits for a new commit or --force
-if [ "$target" = "$(cat "$APP_DIR/.failed-commit" 2>/dev/null)" ] && [ "${1:-}" != "--force" ]; then
-  log "Not deploying ${target:0:7} again: its API did not start. Push a fix to GitHub or run update.sh --force"
+# A version that failed is not tried forever every 5 minutes (a build takes
+# the server's only CPU; an API that does not start stops the forms for half a
+# minute): a build that failed 3 times, or an API that did not start, waits
+# for a new commit or --force. FAILED holds "<commit> <tries>".
+FAILED="$APP_DIR/.failed-commit"
+tries_of() { local c n; read -r c n < "$FAILED" 2>/dev/null && [ "$c" = "$1" ] && echo "${n:-3}" || echo 0; }
+if [ "${1:-}" != "--force" ] && [ "$(tries_of "$target")" -ge 3 ]; then
+  log "Not deploying ${target:0:7} again: it failed before. Push a fix to GitHub or run update.sh --force"
   exit 1
 fi
 
@@ -47,7 +54,16 @@ mkdir -p "$RELEASES" "$CACHE"
 release="$RELEASES/${target:0:12}-$(date '+%Y%m%d%H%M%S')"
 build="$release.building"
 rm -rf "$RELEASES"/*.building
-trap 'rm -rf "$build"' EXIT # anything unfinished is thrown away
+switched=0
+on_exit() {
+  local status=$?
+  rm -rf "$build" # anything unfinished is thrown away
+  if [ "$status" -ne 0 ] && [ "$switched" = 0 ]; then
+    echo "$target $(( $(tries_of "$target") + 1 ))" > "$FAILED"
+    log "ERROR: deploying ${target:0:7} failed; the running version is untouched"
+  fi
+}
+trap on_exit EXIT
 mkdir "$build"
 git archive "$target" | tar -x -C "$build"
 echo "$target" > "$build/COMMIT"
@@ -72,13 +88,12 @@ link_packages() {
   cp -al "$dir/node_modules" "$src/node_modules"
 }
 
-# Server: packages, database client (generated fresh, never into the shared
-# hard-linked files) and migrations
+# Server: packages and the database client (generated fresh, never into the
+# shared hard-linked files); migrations run after the site is built
 link_packages "$build/server" server --omit=dev
 cd "$build/server"
 rm -rf node_modules/.prisma
 ./node_modules/.bin/prisma generate >/dev/null
-./node_modules/.bin/prisma migrate deploy
 
 # Site: build tools are dev dependencies; they always come from the lockfile,
 # never downloaded on the fly by npx
@@ -88,9 +103,14 @@ cd "$build"
 # A version keeps only what runs: the server, the built site and these scripts
 find "$build" -mindepth 1 -maxdepth 1 ! -name server ! -name site ! -name deploy ! -name COMMIT -exec rm -rf {} +
 
+# Database changes last, once everything else is ready. A switch back to the
+# previous version keeps them, so migrations only add (columns, tables) and
+# never rename or drop what the previous version still uses.
+(cd "$build/server" && ./node_modules/.bin/prisma migrate deploy)
+
 # Switch in one step
 mv -T "$build" "$release"
-trap - EXIT
+switched=1
 previous="$(readlink -f "$APP_DIR/current" 2>/dev/null || true)"
 switch_to() {
   ln -sfn "$1" "$APP_DIR/current.new"
@@ -109,7 +129,7 @@ switch_to "$release"
 if ! api_up; then
   if [ -n "$previous" ] && [ -d "$previous" ]; then
     log "ERROR: the API did not start on ${target:0:7}; switching back to $(basename "$previous")"
-    echo "$target" > "$APP_DIR/.failed-commit"
+    echo "$target 3" > "$FAILED"
     switch_to "$previous"
     api_up && log "Back on the previous version" || log "ERROR: the previous version did not start either"
   else
@@ -118,7 +138,7 @@ if ! api_up; then
   exit 1
 fi
 log "Deployed ${target:0:7}"
-rm -f "$APP_DIR/.failed-commit"
+rm -f "$FAILED"
 
 # Keep the 5 newest releases (never the running one) and caches used in 30 days
 running="$(readlink -f "$APP_DIR/current")"

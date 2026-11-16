@@ -172,7 +172,7 @@ systemctl daemon-reload
 systemctl enable buysun-api.service >/dev/null
 
 step "First deploy (takes a few minutes)"
-as_app bash -c "set -a; . '$APP_DIR/shared/server.env'; set +a; exec '$APP_DIR/repo/deploy/update.sh' --force"
+as_app "$APP_DIR/repo/deploy/update.sh" --force
 
 step "First backup (so the health check does not report \"no backups\" until the night)"
 ls "$BACKUP_DIR"/*/SHA256SUMS >/dev/null 2>&1 || systemctl start buysun-backup.service
