@@ -32,6 +32,7 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
       utm: lead.utm,
       created_at: lead.created_at,
       updated_at: lead.updated_at,
+      version: lead.events[0]?.id ?? 0,
       bitrix_status: lead.bitrix_status,
       bitrix_error: lead.bitrix_error,
       bitrix_url: bitrixUrl(lead),
@@ -83,7 +84,7 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
     // Saves an edited anketa: answers, the new PDF, replaced photos.
     // New files are written first; old ones are removed only after the
     // database has the new ones, so a failure never leaves an anketa without files.
-    async update(id, { answers, files, selfieFocus }, user) {
+    async update(id, { answers, files, selfieFocus, version }, user) {
       const lead = await prisma.lead.findUnique({ where: { id }, include: { files: true } })
       if (!lead) throw Object.assign(new Error('Заявка не найдена'), { status: 404, expose: true })
       if (lead.type !== 'anketa') throw Object.assign(new Error('Редактировать можно только анкеты'), { status: 400, expose: true })
@@ -98,15 +99,23 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
       const changedRows = changedLabels(before, { ...rest, email: email || '' })
 
       try {
-        await prisma.$transaction([
-          prisma.leadFile.deleteMany({ where: { id: { in: oldFiles.map((f) => f.id) } } }),
-          prisma.leadFile.createMany({
+        await prisma.$transaction(async (tx) => {
+          // Two managers in one anketa: the row lock makes saves take turns, and
+          // a save made from an older version is refused, so nobody's change is lost
+          await tx.$queryRaw`SELECT id FROM leads WHERE id = ${lead.id} FOR UPDATE`
+          const latest = await tx.leadEvent.findFirst({ where: { lead_id: lead.id }, orderBy: { id: 'desc' }, include: { user: { select: { name: true } } } })
+          if (version !== undefined && (latest?.id ?? 0) !== version) {
+            const when = latest.created_at.toLocaleString('ru-RU', { timeZone: 'Asia/Almaty', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+            throw Object.assign(new Error(`Анкету уже изменил(а) ${latest.user?.name || 'другой менеджер'} (${when}). Ваши правки не сохранены: обновите страницу и внесите их снова.`), { status: 409, expose: true })
+          }
+          await tx.leadFile.deleteMany({ where: { id: { in: oldFiles.map((f) => f.id) } } })
+          await tx.leadFile.createMany({
             data: saved.map((f) => ({ ...f, lead_id: lead.id, focus: f.kind === 'selfie' ? selfieFocus : undefined })),
-          }),
-          ...(selfieFocus && !replacedKinds.includes('selfie')
-            ? [prisma.leadFile.updateMany({ where: { lead_id: lead.id, kind: 'selfie' }, data: { focus: selfieFocus } })]
-            : []),
-          prisma.lead.update({
+          })
+          if (selfieFocus && !replacedKinds.includes('selfie')) {
+            await tx.leadFile.updateMany({ where: { lead_id: lead.id, kind: 'selfie' }, data: { focus: selfieFocus } })
+          }
+          await tx.lead.update({
             where: { id: lead.id },
             data: {
               name: `${answers.firstName} ${answers.lastName}`.trim(),
@@ -114,8 +123,8 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
               email: email || null,
               answers: { ...rest, email: email || '' },
             },
-          }),
-          prisma.leadEvent.create({
+          })
+          await tx.leadEvent.create({
             data: {
               lead_id: lead.id,
               user_id: user.id,
@@ -125,8 +134,8 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
                 files: replacedKinds.filter((k) => k !== 'pdf').map((k) => FILE_LABELS[k]),
               },
             },
-          }),
-        ])
+          })
+        })
       } catch (err) {
         await Promise.all(saved.map((f) => storage.removeFile(f.path).catch(() => {})))
         throw err

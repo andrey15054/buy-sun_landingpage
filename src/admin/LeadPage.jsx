@@ -3,6 +3,7 @@ import { api, fileUrl } from './api'
 import { SECTIONS, PHOTOS, withAllFields } from './anketaForm'
 import { DeliveryBadges, TYPE_LABELS, UTM_LABELS, formatDate } from './common'
 import PhotoField from '../PhotoField'
+import { maxLength } from '../anketaLimits'
 import { processPhoto, defaultFocus } from '../photoUtils'
 import { buildAnketaPdf } from '../anketaPdf'
 import { blobToDataUrl } from '../api'
@@ -177,7 +178,7 @@ function AnketaEditor({ lead, onSaved, onError }) {
       for (const { name, kind } of PHOTOS) {
         if (changedPhotos[name] && photos[name]) files[kind] = photos[name].dataUrl
       }
-      const updated = await api('PUT', `/leads/${lead.id}`, { answers, selfieFocus: photos.selfiePhoto?.focus, files })
+      const updated = await api('PUT', `/leads/${lead.id}`, { answers, selfieFocus: photos.selfiePhoto?.focus, files, version: lead.version })
       savedAnswers.current = JSON.stringify(withAllFields(updated.answers))
       setAnswers(withAllFields(updated.answers))
       setChangedPhotos({})
@@ -253,7 +254,8 @@ function Field({ field, value, onChange }) {
           {field.options.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
       ) : (
-        <input id={id} name={field.name} type={field.type} value={value} onChange={onChange} required={field.required} />
+        <input id={id} name={field.name} type={field.type} value={value} onChange={onChange} required={field.required}
+          maxLength={field.type === 'date' ? undefined : maxLength(field.name)} />
       )}
     </label>
   )

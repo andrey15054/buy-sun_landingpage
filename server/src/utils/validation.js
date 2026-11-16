@@ -97,6 +97,9 @@ const anketaEditSchema = z.object({
   answers,
   selfieFocus: focus,
   files: anketaFiles,
+  // The anketa version the manager opened (id of its last change); a save over
+  // a newer change by someone else is refused instead of silently undoing it
+  version: z.number().int().min(0).optional(),
 })
 
 const SIGNATURES = {

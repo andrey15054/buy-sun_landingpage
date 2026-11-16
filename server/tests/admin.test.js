@@ -179,6 +179,35 @@ describe('cabinet anketas', () => {
     assert.deepEqual(event.details.files, ['фото в полный рост'])
   })
 
+  it('refuses a save made over a newer change by another manager, keeping that change', async () => {
+    await addManager(t, 'boris@buysun.test', { name: 'Борис' })
+    const boris = (await firstLogin(t, 'boris@buysun.test')).c
+    const opened = (await c.call('GET', `/api/admin/leads/${leadId}`)).body
+    const openedByBoris = (await boris.call('GET', `/api/admin/leads/${leadId}`)).body
+    assert.equal(opened.version, openedByBoris.version)
+    const pdf = { pdf: dataUrl('application/pdf', PDF) }
+
+    const first = await c.call('PUT', `/api/admin/leads/${leadId}`, { answers: { ...opened.answers, lastName: 'First' }, files: pdf, version: opened.version })
+    assert.equal(first.status, 200)
+    assert.ok(first.body.version > opened.version, 'a save makes a new version')
+    const leadFiles = () => fs.readdirSync(path.join(t.uploadDir, 'leads', String(leadId))).length
+    const filesBefore = leadFiles()
+
+    const late = await boris.call('PUT', `/api/admin/leads/${leadId}`, { answers: { ...openedByBoris.answers, city: 'Shymkent' }, files: pdf, version: openedByBoris.version })
+    assert.equal(late.status, 409)
+    assert.match(late.body.error, /Анкету уже изменил\(а\) Анна.*обновите страницу/)
+    const now = (await c.call('GET', `/api/admin/leads/${leadId}`)).body
+    assert.equal(now.answers.lastName, 'First', 'the first change is kept')
+    assert.equal(now.answers.city, opened.answers.city)
+    assert.equal(leadFiles(), filesBefore, 'the refused save leaves no files behind')
+
+    // After reloading, Boris saves from the new version
+    const again = await boris.call('PUT', `/api/admin/leads/${leadId}`, { answers: { ...now.answers, city: 'Shymkent' }, files: pdf, version: now.version })
+    assert.equal(again.status, 200)
+    assert.equal(again.body.answers.lastName, 'First')
+    assert.equal(again.body.answers.city, 'Shymkent')
+  })
+
   it('refuses to edit a short form lead and bad files', async () => {
     const callback = await t.prisma.lead.findFirst({ where: { type: 'callback' } })
     const lead = (await c.call('GET', `/api/admin/leads/${leadId}`)).body
