@@ -6,13 +6,18 @@
 #
 # Settings (environment variables):
 #   DOMAIN      site address, default buysun.kz
-#   REPO_URL    GitHub repository, default git@github.com:idrisqtt/buy-sun_landingpage.git
+#   REPO_URL    GitHub repository, default https://github.com/idrisqtt/buy-sun_landingpage.git
+#               (public: no key needed; a git@github.com:... address makes a deploy key)
 #   BRANCH      branch to deploy, default main
 #   SKIP_SWAP=1 do not create a swap file (only for test containers)
+#   SSH_PORT    move SSH to this port, in two runs so access is never lost:
+#               SSH_PORT=52022 adds the port next to the current one; after a
+#               login on it works, SSH_PORT=52022 SSH_CLOSE_OLD_PORT=1 closes the old one
+#   SSH_KEYS_ONLY=1  no password logins (only when root already has a key)
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-buysun.kz}"
-REPO_URL="${REPO_URL:-git@github.com:idrisqtt/buy-sun_landingpage.git}"
+REPO_URL="${REPO_URL:-https://github.com/idrisqtt/buy-sun_landingpage.git}"
 BRANCH="${BRANCH:-main}"
 NODE_VERSION="24.22.1"
 APP_USER=buysun
@@ -192,9 +197,59 @@ systemctl reload-or-restart caddy
 sleep 2
 systemctl is-active --quiet caddy || { journalctl -u caddy -n 20 --no-pager; exit 1; }
 
+step "SSH: port${SSH_PORT:+ $SSH_PORT}, fail2ban against password guessing"
+ssh_ports() { sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | sort -un | paste -sd' ' || true; }
+old_ports="$(ssh_ports)"
+SSH_CONF=/etc/ssh/sshd_config.d/10-buysun.conf
+if [ -n "${SSH_PORT:-}" ] || [ "${SSH_KEYS_ONLY:-}" = 1 ]; then
+  if [ -n "${SSH_PORT:-}" ]; then
+    # First the new port next to the old one; the old one goes only when asked
+    if [ "${SSH_CLOSE_OLD_PORT:-}" = 1 ]; then new_ports="$SSH_PORT"; else new_ports="$(printf '%s\n' ${old_ports:-22} "$SSH_PORT" | sort -un | paste -sd' ')"; fi
+  else
+    new_ports="${old_ports:-22}"
+  fi
+  {
+    echo "# Written by deploy/setup-server.sh"
+    for p in $new_ports; do echo "Port $p"; done
+    if [ "${SSH_KEYS_ONLY:-}" = 1 ]; then
+      if [ -s /root/.ssh/authorized_keys ]; then
+        echo "PasswordAuthentication no"
+        echo "KbdInteractiveAuthentication no"
+      else
+        echo "SSH_KEYS_ONLY=1 ignored: root has no SSH key, passwords stay on" >&2
+      fi
+    fi
+  } > "$SSH_CONF.new"
+  mv "$SSH_CONF.new" "$SSH_CONF"
+  sshd -t || { rm -f "$SSH_CONF"; echo "SSH settings are wrong, left as they were" >&2; exit 1; }
+  for p in $new_ports; do ufw allow "$p/tcp" >/dev/null; done
+  # Ubuntu starts SSH from a socket, which takes its ports from sshd's settings
+  systemctl daemon-reload
+  if systemctl is-enabled --quiet ssh.socket 2>/dev/null; then systemctl restart ssh.socket; fi
+  systemctl restart ssh 2>/dev/null || systemctl restart sshd
+  sleep 1
+  for p in $new_ports; do ss -ltn "sport = :$p" | grep -q LISTEN || { echo "SSH does not listen on $p" >&2; exit 1; }; done
+  for p in $old_ports; do case " $new_ports " in *" $p "*) ;; *) ufw delete allow "$p/tcp" >/dev/null 2>&1 || true ;; esac; done
+fi
+ssh_now="$(ssh_ports)"
+echo "SSH listens on: ${ssh_now:-22}"
+
+apt-get install -y -q fail2ban >/dev/null
+cat > /etc/fail2ban/jail.d/buysun.local <<EOF
+# 5 wrong SSH logins in 10 minutes: that address is blocked for an hour
+[sshd]
+enabled = true
+port = $(echo "${ssh_now:-22}" | tr ' ' ',')
+backend = systemd
+maxretry = 5
+findtime = 10m
+bantime = 1h
+EOF
+systemctl enable fail2ban >/dev/null 2>&1
+systemctl restart fail2ban
+
 step "Firewall: only SSH, HTTP and HTTPS"
-ssh_port="$(sshd -T 2>/dev/null | awk '$1 == "port" {print $2; exit}' || true)"
-ufw allow "${ssh_port:-22}/tcp" >/dev/null
+for p in ${ssh_now:-22}; do ufw allow "$p/tcp" >/dev/null; done
 ufw allow 80/tcp >/dev/null
 ufw allow 443 >/dev/null
 ufw --force enable >/dev/null

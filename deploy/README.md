@@ -1,7 +1,8 @@
-# buysun.kz on a PS.kz VPS
+# buysun.kz on a VPS
 
-One small server (PS.kz Basic-1: 1 CPU, 1 GB memory, 20 GB disk, Ubuntu 24.04)
-runs everything:
+One small server runs everything. Today it is Hoster.kz (1 CPU, 2 GB memory,
+25 GB disk, Ubuntu 26.04); the script was also tested on Ubuntu 24.04 with
+1 GB memory:
 
 | Part | What it does |
 |---|---|
@@ -13,15 +14,18 @@ runs everything:
 | `buysun-restore-test.timer` | 1st of every month: restores the latest backup into a temporary database and checks it |
 | `buysun-healthcheck.timer` | Every 5 minutes: site, API, certificate, disk, backups, failed jobs, failed deliveries; emails the client |
 | unattended-upgrades | Security updates every day, reboot at 04:30 when the kernel needs it |
+| ufw, fail2ban | Only SSH, 80 and 443 are open; 5 wrong SSH logins in 10 minutes block that address for an hour |
 
 Measured on a test machine: about 200 MB of memory in use, everything comes
 back by itself after a reboot.
 
 ## What is needed before the move
 
-1. **The server**: Basic-1 on PS.kz with Ubuntu 24.04, ordered in the client’s name, root SSH access.
-2. **GitHub access**: the setup script prints a key; the owner of
-   `idrisqtt/buy-sun_landingpage` adds it in Settings → Deploy keys (read-only).
+1. **The server**: Ubuntu 24.04 or 26.04, ordered in the client’s name, root SSH access.
+2. **GitHub access**: nothing while the repository is public, the server reads
+   it over HTTPS. If it becomes private, run the script with
+   `REPO_URL=git@github.com:idrisqtt/buy-sun_landingpage.git`: it prints a key
+   that the owner adds in Settings → Deploy keys (read-only).
 3. **Work email** for lead copies and problem alerts, and an SMTP mailbox to send from.
 4. **Bitrix24** incoming webhook with the CRM scope (see `server/README.md`).
 5. **Off-site backup storage**: any place rclone supports (PS.kz object storage,
@@ -35,8 +39,31 @@ git clone https://github.com/idrisqtt/buy-sun_landingpage.git /tmp/buysun   # or
 DOMAIN=buysun.kz bash /tmp/buysun/deploy/setup-server.sh
 ```
 
-The script can be run again at any time; it only does what is missing. It
-stops once to show the GitHub key, then continues on the next run.
+The script can be run again at any time; it only does what is missing. With
+a `git@github.com:` address it stops once to show the GitHub key, then
+continues on the next run.
+
+Until the pull request is merged into `main` (today `main` is still the
+Vercel site), deploy the branch with everything: add
+`BRANCH=docs/claude-site-editing` to the command. After the merge switch to
+`main`: set `DEPLOY_BRANCH=main` in `/opt/buysun/shared/server.env`; the
+next update (within 5 minutes) takes `main`.
+
+### SSH: another port, keys only
+
+Done in steps so access is never lost:
+
+```bash
+SSH_PORT=52022 bash /opt/buysun/repo/deploy/setup-server.sh      # 22 and 52022 both open
+ssh -p 52022 root@<server>                                         # from your computer: must work
+SSH_PORT=52022 SSH_CLOSE_OLD_PORT=1 bash /opt/buysun/repo/deploy/setup-server.sh   # 22 closed
+```
+
+For keys only, first `ssh-copy-id -p 52022 root@<server>` from each computer
+that needs access, check a login without a password, then run the script with
+`SSH_PORT=52022 SSH_KEYS_ONLY=1`. Without a key in `/root/.ssh/authorized_keys`
+the script leaves password logins on. If you are locked out anyway, the
+hosting control panel has a console (VNC) that does not go through SSH.
 
 Then:
 
