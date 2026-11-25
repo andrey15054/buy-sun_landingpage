@@ -68,6 +68,17 @@ const emptyForm = {
 
 const PHOTO_SAVE_DELAY_MS = 500
 
+// Vacancy names for the WhatsApp message: [Russian, English]
+const POSITION_NAMES = {
+  waiter: ['Официант', 'Waiter'],
+  bartender: ['Бармен', 'Bartender'],
+  receptionist: ['Ресепшн', 'Receptionist'],
+  housekeeping: ['Горничная', 'Housekeeping'],
+  kitchen: ['Кухня', 'Kitchen'],
+  animator: ['Аниматор', 'Animator'],
+  other: ['Другое', 'Other'],
+}
+
 function ResumeModal({ isOpen, onClose }) {
   const [currentStep, setCurrentStep] = useState(1)
   const [language, setLanguage] = useState('ru')
@@ -95,8 +106,8 @@ function ResumeModal({ isOpen, onClose }) {
       step1Desc: 'Введите данные без ошибок',
       step2Title: 'Отправьте анкету',
       step2Desc: 'Нажмите «Отправить резюме»',
-      step3Title: 'Мы получим её сразу',
-      step3Desc: 'Вместе с фото, без WhatsApp',
+      step3Title: 'Откроется WhatsApp',
+      step3Desc: 'Отправьте нам готовое сообщение',
       step4Title: 'Ждите звонка',
       step4Desc: 'Менеджер свяжется с вами',
       allFieldsRequired: 'Все поля обязательны',
@@ -123,7 +134,7 @@ function ResumeModal({ isOpen, onClose }) {
       sendingTitle: 'Отправляем анкету...',
       sendingDesc: 'Это займёт несколько секунд. Не закрывайте окно.',
       sentTitle: 'Анкета отправлена!',
-      sentDesc: 'Менеджер получил анкету и фото и свяжется с вами. PDF можно скачать для себя.',
+      sentDesc: 'Анкета и фото уже у менеджера. Отправьте нам сообщение в WhatsApp — если он не открылся сам, нажмите кнопку ниже.',
       errorTitle: 'Анкета готова, но не отправилась',
       errorDesc: 'Нажмите «Отправить ещё раз». Если не получается, скачайте PDF и отправьте его нам в WhatsApp.',
       retry: 'Отправить ещё раз'
@@ -135,8 +146,8 @@ function ResumeModal({ isOpen, onClose }) {
       step1Desc: 'Enter data without errors',
       step2Title: 'Submit the form',
       step2Desc: 'Click «Submit Resume»',
-      step3Title: 'We get it at once',
-      step3Desc: 'With photos, no WhatsApp needed',
+      step3Title: 'WhatsApp opens',
+      step3Desc: 'Send us the ready message',
       step4Title: 'Wait for a call',
       step4Desc: 'A manager will contact you',
       allFieldsRequired: 'All fields are required',
@@ -163,7 +174,7 @@ function ResumeModal({ isOpen, onClose }) {
       sendingTitle: 'Sending your form...',
       sendingDesc: 'This takes a few seconds. Please do not close the window.',
       sentTitle: 'Your form has been sent!',
-      sentDesc: 'A manager has your form and photos and will contact you. You can download the PDF for yourself.',
+      sentDesc: 'A manager already has your form and photos. Send us the message on WhatsApp — if it did not open by itself, click the button below.',
       errorTitle: 'Your form is ready but was not sent',
       errorDesc: 'Click «Send again». If it does not work, download the PDF and send it to us on WhatsApp.',
       retry: 'Send again'
@@ -324,6 +335,9 @@ function ResumeModal({ isOpen, onClose }) {
       // Sent: answers and photos no longer wait on this device (a shared or
       // family phone would show them to the next person)
       clearDraft()
+      // The anketa goes to WhatsApp too, as on the first version of the site:
+      // only now, since leaving the page earlier would cut off the upload
+      openWhatsApp(true)
     } catch (err) {
       setSendError(err.message)
       setSendStatus('error')
@@ -347,21 +361,39 @@ function ResumeModal({ isOpen, onClose }) {
     }
   }
 
-  const handleSendWhatsApp = () => {
-    // Fallback when the form could not be sent to the server
-    const message = `Hello! My name is ${formData.firstName} ${formData.lastName}. I am sending my resume for employment.
-
-Contact details:
-Phone: ${formData.phone}
-Email: ${formData.email}
-
-Desired position: ${formData.desiredPosition}
-Work period: ${formData.startMonth}/${formData.startDay} - ${formData.endMonth}/${formData.endDay}
-
-Please consider my application. PDF resume is downloaded and ready to be sent.`
-    
-    window.open(whatsappLink(message), '_blank')
+  // The candidate's message to the agency on WhatsApp. After a successful send
+  // the anketa and photos are already in the cabinet (find it by the phone);
+  // after a failed one the PDF goes by hand.
+  const openWhatsApp = (sent) => {
+    const ru = language === 'ru'
+    const position = POSITION_NAMES[formData.desiredPosition]?.[ru ? 0 : 1] || formData.desiredPosition
+    const day = (d, m) => (d && m ? `${d}.${m}` : '')
+    const from = day(formData.startDay, formData.startMonth)
+    const to = day(formData.endDay, formData.endMonth)
+    const name = `${formData.firstName} ${formData.lastName}`.trim()
+    const lines = ru
+      ? [
+          `Здравствуйте! Меня зовут ${name}.`,
+          sent ? 'Я отправил(а) анкету на сайте buysun.kz.' : 'Анкета на сайте не отправилась, PDF пришлю следующим сообщением.',
+          '',
+          `Телефон: ${formData.phone}`,
+          position && `Вакансия: ${position}`,
+          from && to && `Могу работать: с ${from} по ${to}`,
+        ]
+      : [
+          `Hello! My name is ${name}.`,
+          sent ? 'I have sent my application form on buysun.kz.' : 'The form on the site was not sent, I will send the PDF in the next message.',
+          '',
+          `Phone: ${formData.phone}`,
+          position && `Position: ${position}`,
+          from && to && `Available: ${from} – ${to}`,
+        ]
+    const link = whatsappLink(lines.filter((l) => typeof l === 'string').join('\n'))
+    // Opened right after the send, the new tab may be blocked (it no longer
+    // follows the click); then this page goes to WhatsApp instead
+    if (!window.open(link, '_blank')) window.location.href = link
   }
+  const handleSendWhatsApp = () => openWhatsApp(sendStatus === 'sent')
 
   const handleClose = () => {
     setCurrentStep(1)
@@ -1010,6 +1042,14 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                 )}
 
                 <div className="result-buttons">
+                  {sendStatus !== 'sending' && (
+                    <button className="whatsapp-btn" onClick={handleSendWhatsApp}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      {t.sendWhatsApp}
+                    </button>
+                  )}
                   <button className="download-btn" onClick={handleDownloadPDF}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1018,14 +1058,6 @@ Please consider my application. PDF resume is downloaded and ready to be sent.`
                     </svg>
                     {t.downloadPdf}
                   </button>
-                  {sendStatus === 'error' && (
-                    <button className="whatsapp-btn" onClick={handleSendWhatsApp}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                      {t.sendWhatsApp}
-                    </button>
-                  )}
                 </div>
 
                 <div className="result-secondary">
