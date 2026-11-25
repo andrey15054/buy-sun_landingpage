@@ -37,7 +37,7 @@ export async function sendLead(kind, body) {
   } catch {
     throw new SendError('Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.')
   }
-  if (response.ok) return
+  if (response.ok) return response.json().catch(() => ({}))
   const data = await response.json().catch(() => null)
   const fieldMessage = data?.fields?.[0]?.message
   throw new SendError(fieldMessage || data?.error || 'Не удалось отправить. Попробуйте ещё раз.')

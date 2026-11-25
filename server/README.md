@@ -33,7 +33,8 @@ Postgres, with a fake Bitrix24 and a fake mail server.
 |---|---|
 | `POST /api/leads/quick` | `{ name, phone, consent: true, utm? }` |
 | `POST /api/leads/callback` | `{ phone, consent: true, utm? }` |
-| `POST /api/leads/anketa` | `{ answers, consent: true, utm?, files: { pdf, selfie?, full_body?, additional? } }`, files as `data:` URLs (PDF ≤ 8 MB, JPEG ≤ 4 MB) |
+| `POST /api/leads/anketa` | `{ answers, consent: true, utm?, files: { pdf, selfie?, full_body?, additional? } }`, files as `data:` URLs (PDF ≤ 8 MB, JPEG ≤ 4 MB); answers `{ ok, share }`, the secret part of the anketa link |
+| `GET /api/a/:share` | The anketa link: its current PDF in the browser, without the cabinet; not indexed, not cached, 120 tries per 15 minutes per IP |
 | `GET /api/health` | `{ status: "ok" }` when the database answers |
 
 Manager cabinet (`/admin/` on the site), all under `/api/admin`, session in an
@@ -45,12 +46,15 @@ httpOnly cookie, every change needs the `X-Requested-With: buysun-admin` header:
 | `GET /leads?q=&type=&page=` | List and search by name, phone, email or number |
 | `GET /leads/:id`, `GET /leads/:id/files/:fileId` | One lead with files, Bitrix24 link and change history; a stored file |
 | `PUT /leads/:id` | Save an edited anketa: answers, the new PDF (built in the browser), replaced photos |
+| `POST /leads/:id/share-link` | A new anketa link; the old one stops opening |
 
 Security of the cabinet: the code from the phone is required for everyone and
 cannot be reused; 5 wrong passwords or codes lock the account for 15 minutes;
 sessions end after 2 idle hours or 12 hours; passwords are scrypt hashes;
 every edit is recorded with who and what. Anketa files are only given to a
-logged-in manager.
+logged-in manager, except the anketa PDF behind its link: whoever has the
+link (32 random characters) sees the PDF, as the candidate and the managers
+mean to share it in Direct or WhatsApp.
 
 Spam protection: hidden `website` field (bots get a fake “ok”), 10 forms per
 15 minutes per IP, forms from other sites refused by `Origin`, strict

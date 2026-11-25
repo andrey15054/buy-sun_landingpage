@@ -3,6 +3,8 @@ const rateLimit = require('express-rate-limit')
 const { honeypot } = require('../middleware/spam')
 const { quickLeadSchema, callbackLeadSchema, anketaSchema } = require('../utils/validation')
 const { logger } = require('../utils/logger')
+const { SHARE_TOKEN } = require('../utils/shareToken')
+const { downloadName, contentDisposition } = require('../utils/download')
 
 // Anketas are taken a few at a time: each one is several megabytes in memory
 // while it is checked and written to disk. The others wait their turn (their
@@ -76,8 +78,28 @@ function leadsRouter({ config, leads, delivery }) {
       const data = anketaSchema.parse(req.body)
       const lead = await leads.createAnketa(data)
       logger.info('Lead stored', { leadId: lead.id, type: 'anketa' })
-      res.status(201).json({ ok: true })
+      // The anketa link for the candidate's WhatsApp message and Direct
+      res.status(201).json({ ok: true, share: lead.share_token })
       delivery.enqueue(lead.id) // Bitrix24 and email in the background
+    } catch (err) { next(err) }
+  })
+
+  // An anketa by its link: the PDF opens in the browser, without the cabinet.
+  // The link is the only key, so the page is kept out of search engines and
+  // caches, and too many tries from one address are cut off.
+  router.get('/a/:token', limiter(120), async (req, res, next) => {
+    try {
+      const shared = SHARE_TOKEN.test(req.params.token) ? await leads.sharedPdf(req.params.token) : null
+      if (!shared) return res.status(404).type('text/plain; charset=utf-8').send('Анкета не найдена. Ссылка неверная или больше не действует.')
+      // Built-in PDF viewers do not need the API's strict page rules
+      res.removeHeader('Content-Security-Policy')
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': contentDisposition('inline', downloadName(shared.file)),
+        'Cache-Control': 'private, no-store',
+        'X-Robots-Tag': 'noindex, nofollow',
+      })
+      res.send(shared.buffer)
     } catch (err) { next(err) }
   })
 

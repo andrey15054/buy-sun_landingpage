@@ -162,6 +162,19 @@ describe('cabinet anketas', () => {
     assert.equal((await c.call('GET', '/api/admin/leads?type=callback')).body.total, 1)
   })
 
+  it('shows the anketa link and makes a new one that cuts off the old', async () => {
+    const lead = (await c.call('GET', `/api/admin/leads/${leadId}`)).body
+    assert.match(lead.share_token, /^[A-Za-z0-9_-]{32}$/)
+    const renewed = await c.call('POST', `/api/admin/leads/${leadId}/share-link`)
+    assert.equal(renewed.status, 200)
+    assert.notEqual(renewed.body.share_token, lead.share_token)
+    assert.equal((await fetch(`${t.base}/api/a/${lead.share_token}`)).status, 404)
+    assert.equal((await fetch(`${t.base}/api/a/${renewed.body.share_token}`)).status, 200)
+    // Short leads have no anketa to share
+    const callback = await t.prisma.lead.findFirst({ where: { type: 'callback' } })
+    assert.equal((await c.call('POST', `/api/admin/leads/${callback.id}/share-link`)).status, 400)
+  })
+
   it('opens an anketa with its files, selfie position and Bitrix24 link', async () => {
     const lead = (await c.call('GET', `/api/admin/leads/${leadId}`)).body
     assert.equal(lead.answers.firstName, 'Ivan')

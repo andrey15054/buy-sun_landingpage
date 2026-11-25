@@ -88,6 +88,9 @@ function ResumeModal({ isOpen, onClose }) {
   const [hasDraft, setHasDraft] = useState(false)
   const [consent, setConsent] = useState(false)
   const [sendStatus, setSendStatus] = useState('idle') // idle | sending | sent | error
+  // Link to the sent anketa (its PDF on buysun.kz) for Direct and WhatsApp
+  const [shareLink, setShareLink] = useState('')
+  const [copied, setCopied] = useState(false)
   const [sendError, setSendError] = useState('')
   const pdfBlobRef = useRef(null)
   const honeypotRef = useRef('')
@@ -137,7 +140,13 @@ function ResumeModal({ isOpen, onClose }) {
       sentDesc: 'Анкета и фото уже у менеджера. Отправьте нам сообщение в WhatsApp — если он не открылся сам, нажмите кнопку ниже.',
       errorTitle: 'Анкета готова, но не отправилась',
       errorDesc: 'Нажмите «Отправить ещё раз». Если не получается, скачайте PDF и отправьте его нам в WhatsApp.',
-      retry: 'Отправить ещё раз'
+      retry: 'Отправить ещё раз',
+      linkTitle: 'Ссылка на вашу анкету',
+      linkHint: 'Её можно отправить в Instagram Direct или в любой мессенджер.',
+      copyLink: 'Скопировать',
+      copied: 'Скопировано',
+      shareLink: 'Поделиться',
+      waLink: 'Анкета'
     },
     en: {
       title: 'FILL OUT THE FORM',
@@ -177,7 +186,13 @@ function ResumeModal({ isOpen, onClose }) {
       sentDesc: 'A manager already has your form and photos. Send us the message on WhatsApp — if it did not open by itself, click the button below.',
       errorTitle: 'Your form is ready but was not sent',
       errorDesc: 'Click «Send again». If it does not work, download the PDF and send it to us on WhatsApp.',
-      retry: 'Send again'
+      retry: 'Send again',
+      linkTitle: 'Link to your form',
+      linkHint: 'You can send it in Instagram Direct or any messenger.',
+      copyLink: 'Copy',
+      copied: 'Copied',
+      shareLink: 'Share',
+      waLink: 'Form'
     }
   }
 
@@ -319,7 +334,7 @@ function ResumeModal({ isOpen, onClose }) {
       const answers = Object.fromEntries(
         Object.entries(formData).filter(([key]) => !PHOTO_FIELDS.includes(key))
       )
-      await sendLead('anketa', {
+      const sent = await sendLead('anketa', {
         answers,
         website: honeypotRef.current,
         // Where the face is on the round photo: the cabinet rebuilds the PDF with it
@@ -331,13 +346,15 @@ function ResumeModal({ isOpen, onClose }) {
           additional: formData.additionalPhoto1?.dataUrl,
         },
       })
+      const link = sent?.share ? `${window.location.origin}/api/a/${sent.share}` : ''
+      setShareLink(link)
       setSendStatus('sent')
       // Sent: answers and photos no longer wait on this device (a shared or
       // family phone would show them to the next person)
       clearDraft()
       // The anketa goes to WhatsApp too, as on the first version of the site:
       // only now, since leaving the page earlier would cut off the upload
-      openWhatsApp(true)
+      openWhatsApp(true, link)
     } catch (err) {
       setSendError(err.message)
       setSendStatus('error')
@@ -364,36 +381,54 @@ function ResumeModal({ isOpen, onClose }) {
   // The candidate's message to the agency on WhatsApp. After a successful send
   // the anketa and photos are already in the cabinet (find it by the phone);
   // after a failed one the PDF goes by hand.
-  const openWhatsApp = (sent) => {
+  const openWhatsApp = (sent, link = '') => {
     const ru = language === 'ru'
     const position = POSITION_NAMES[formData.desiredPosition]?.[ru ? 0 : 1] || formData.desiredPosition
     const day = (d, m) => (d && m ? `${d}.${m}` : '')
     const from = day(formData.startDay, formData.startMonth)
     const to = day(formData.endDay, formData.endMonth)
     const name = `${formData.firstName} ${formData.lastName}`.trim()
-    const lines = ru
+    // Two paragraphs: who and the anketa, then the details; empty rows dropped
+    const [intro, details] = ru
       ? [
-          `Здравствуйте! Меня зовут ${name}.`,
-          sent ? 'Я отправил(а) анкету на сайте buysun.kz.' : 'Анкета на сайте не отправилась, PDF пришлю следующим сообщением.',
-          '',
-          `Телефон: ${formData.phone}`,
-          position && `Вакансия: ${position}`,
-          from && to && `Могу работать: с ${from} по ${to}`,
+          [`Здравствуйте! Меня зовут ${name}.`,
+            sent ? 'Я отправил(а) анкету на сайте buysun.kz.' : 'Анкета на сайте не отправилась, PDF пришлю следующим сообщением.',
+            link && `${t.waLink}: ${link}`],
+          [`Телефон: ${formData.phone}`,
+            position && `Вакансия: ${position}`,
+            from && to && `Могу работать: с ${from} по ${to}`],
         ]
       : [
-          `Hello! My name is ${name}.`,
-          sent ? 'I have sent my application form on buysun.kz.' : 'The form on the site was not sent, I will send the PDF in the next message.',
-          '',
-          `Phone: ${formData.phone}`,
-          position && `Position: ${position}`,
-          from && to && `Available: ${from} – ${to}`,
+          [`Hello! My name is ${name}.`,
+            sent ? 'I have sent my application form on buysun.kz.' : 'The form on the site was not sent, I will send the PDF in the next message.',
+            link && `${t.waLink}: ${link}`],
+          [`Phone: ${formData.phone}`,
+            position && `Position: ${position}`,
+            from && to && `Available: ${from} – ${to}`],
         ]
-    const link = whatsappLink(lines.filter((l) => typeof l === 'string').join('\n'))
+    const wa = whatsappLink([intro, details].map((rows) => rows.filter(Boolean).join('\n')).join('\n\n'))
     // Opened right after the send, the new tab may be blocked (it no longer
     // follows the click); then this page goes to WhatsApp instead
-    if (!window.open(link, '_blank')) window.location.href = link
+    if (!window.open(wa, '_blank')) window.location.href = wa
   }
-  const handleSendWhatsApp = () => openWhatsApp(sendStatus === 'sent')
+  const handleSendWhatsApp = () => openWhatsApp(sendStatus === 'sent', shareLink)
+
+  // Instagram's own browser may have no clipboard API: then the text field is
+  // selected and copied the old way
+  const copyLink = async (e) => {
+    try {
+      await navigator.clipboard.writeText(shareLink)
+    } catch {
+      const input = e.currentTarget.parentElement.querySelector('input')
+      input.select()
+      document.execCommand('copy')
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  const shareAnketa = () => {
+    navigator.share({ title: 'BUY SUN', url: shareLink }).catch(() => {})
+  }
 
   const handleClose = () => {
     setCurrentStep(1)
@@ -1039,6 +1074,20 @@ function ResumeModal({ isOpen, onClose }) {
                       {t.retry}
                     </button>
                   </>
+                )}
+
+                {sendStatus === 'sent' && shareLink && (
+                  <div className="share-link">
+                    <p className="share-link-title">{t.linkTitle}</p>
+                    <div className="share-link-row">
+                      <input readOnly value={shareLink} onFocus={(e) => e.target.select()} aria-label={t.linkTitle} />
+                      <button type="button" onClick={copyLink}>{copied ? t.copied : t.copyLink}</button>
+                      {typeof navigator !== 'undefined' && navigator.share && (
+                        <button type="button" onClick={shareAnketa}>{t.shareLink}</button>
+                      )}
+                    </div>
+                    <p className="share-link-hint">{t.linkHint}</p>
+                  </div>
                 )}
 
                 <div className="result-buttons">
