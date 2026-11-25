@@ -172,6 +172,8 @@ a { color: var(--cab-accent); }
 .cab-head h1 { margin: 0 0 4px; font-size: 26px; }
 .cab-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .cab-section { background: #fff; border: 1px solid var(--cab-line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.cab-steps { margin: 0 0 12px; padding-left: 22px; }
+.cab-steps li { margin-bottom: 4px; }
 .cab-section h2 { margin: 0 0 14px; font-size: 17px; color: var(--cab-blue); }
 .cab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); column-gap: 16px; }
 .cab-grid .wide { grid-column: 1 / -1; }

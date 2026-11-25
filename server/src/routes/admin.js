@@ -32,7 +32,7 @@ function nextStep(user, session) {
   return null
 }
 
-function adminRouter({ config, prisma, storage, leadAdmin, templates }) {
+function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery = null, drive = null }) {
   const router = express.Router()
   const strict = config.isProduction
   const json = express.json({ limit: '20kb' })
@@ -276,6 +276,52 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates }) {
       const data = anketaEditSchema.parse(req.body)
       const lead = await leadAdmin.update(leadId(req), data, req.user)
       res.json(lead)
+      // The new PDF and photos go to the anketa's Google Drive folder too
+      if (drive && delivery) {
+        await prisma.lead.update({ where: { id: lead.id }, data: { drive_status: 'pending', drive_error: null } })
+        delivery.enqueue(lead.id)
+      }
+    } catch (err) { next(err) }
+  })
+
+  // ---- Google Drive ----
+
+  router.get('/google', loadSession, requireFull, async (req, res, next) => {
+    try {
+      res.json(drive ? { configured: true, ...(await drive.status()) } : { configured: false, connected: false })
+    } catch (err) { next(err) }
+  })
+
+  // The cabinet's «Подключить Google Диск» link: off to Google's consent page
+  router.get('/google/connect', loadSession, requireFull, (req, res) => {
+    if (!drive) return res.redirect('/admin/#/google')
+    res.redirect(drive.authUrl(req.user.id))
+  })
+
+  // Google sends the manager back here (without the cabinet cookie, which is
+  // SameSite=Strict: the one-time state ties the answer to the manager)
+  router.get('/google/callback', async (req, res) => {
+    const back = (query) => res.redirect(`/admin/#/google?${new URLSearchParams(query)}`)
+    if (!drive) return back({ error: 'Google Диск не настроен на сервере' })
+    if (req.query.error) {
+      return back({ error: req.query.error === 'access_denied' ? 'Доступ не дан: нажмите «Подключить» ещё раз и разрешите доступ.' : String(req.query.error).slice(0, 200) })
+    }
+    try {
+      await drive.finish({ code: String(req.query.code || ''), state: String(req.query.state || '') })
+      const anketas = await prisma.lead.findMany({ where: { type: 'anketa', drive_status: 'pending' }, select: { id: true }, orderBy: { id: 'asc' } })
+      for (const { id } of anketas) delivery?.enqueue(id)
+      back({ ok: '1' })
+    } catch (err) {
+      logger.error('Google Drive connection failed', { error: String(err.message).slice(0, 300) })
+      back({ error: err.status && err.status < 500 && !/^Google:/.test(err.message) ? err.message : 'Не удалось подключить Google Диск. Попробуйте ещё раз.' })
+    }
+  })
+
+  router.delete('/google', loadSession, requireFull, async (req, res, next) => {
+    try {
+      if (drive) await drive.disconnect()
+      logger.info('Google Drive disconnected', { userId: req.user.id })
+      res.json({ configured: Boolean(drive), connected: false })
     } catch (err) { next(err) }
   })
 

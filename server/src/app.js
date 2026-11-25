@@ -10,7 +10,7 @@ const { createLeadService } = require('./services/leads')
 
 // The API only: the site and the cabinet page are static files served by
 // the web server in front, which forwards /api here.
-function createApp({ config, prisma, storage, delivery }) {
+function createApp({ config, prisma, storage, delivery, drive = null }) {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', 1) // real client IP for rate limits behind the web server
@@ -29,7 +29,7 @@ function createApp({ config, prisma, storage, delivery }) {
   const bitrixPortal = config.bitrix ? new URL(config.bitrix.webhookUrl).origin : null
   const leadAdmin = createLeadAdmin({ prisma, storage, bitrixPortal })
   app.use('/api', originCheck(config.allowedOrigins))
-  app.use('/api/admin', adminRouter({ config, prisma, storage, leadAdmin, templates: createTemplates({ prisma }) }))
+  app.use('/api/admin', adminRouter({ config, prisma, storage, leadAdmin, templates: createTemplates({ prisma }), delivery, drive }))
   app.use('/api', leadsRouter({ config, leads, delivery }))
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))

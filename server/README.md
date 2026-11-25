@@ -47,6 +47,7 @@ httpOnly cookie, every change needs the `X-Requested-With: buysun-admin` header:
 | `GET /leads/:id`, `GET /leads/:id/files/:fileId` | One lead with files, Bitrix24 link and change history; a stored file |
 | `PUT /leads/:id` | Save an edited anketa: answers, the new PDF (built in the browser), replaced photos |
 | `POST /leads/:id/share-link` | A new anketa link; the old one stops opening |
+| `GET /google`, `GET /google/connect`, `GET /google/callback`, `DELETE /google` | Google Drive: status, off to Google's consent page, back from it (tied by a one-time state, no cookie), disconnect |
 
 Security of the cabinet: the code from the phone is required for everyone and
 cannot be reused; 5 wrong passwords or codes lock the account for 15 minutes;
@@ -87,6 +88,14 @@ leads arrive by email only.
 
 **Email.** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `LEADS_EMAIL_TO`. Every lead
 is emailed with the anketa PDF and photos attached.
+
+**Google Drive.** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (an OAuth client,
+see `deploy/README.md`). A manager then connects the agency's Google account
+once in the cabinet («Google Диск» at the top). Each anketa becomes a folder
+«Имя — дата — анкета №N» with the PDF and photos inside «BUY SUN — анкеты с
+сайта»; an edit in the cabinet updates the same files; a folder deleted in
+Drive by hand is made again. The scope is `drive.file`: the site sees only the
+files it made. On connecting, every anketa already stored is copied.
 
 **Retention.** `RETENTION_DAYS=365` deletes leads and their files older than a
 year, once a day. Empty keeps everything; the period is the client’s decision

@@ -30,9 +30,18 @@ const EMAIL = {
   skipped: ['off', 'Почта не подключена'],
 }
 
+const DRIVE = {
+  sent: ['ok', 'Google Диск'],
+  failed: ['bad', 'Не сохранилась на Google Диск'],
+  pending: ['wait', 'Сохраняется на Google Диск'],
+  skipped: ['off', 'Google Диск не подключён'],
+}
+
 // Where the lead went: green when delivered, red when it did not reach
 export function DeliveryBadges({ lead, compact = false }) {
   const items = [[BITRIX, lead.bitrix_status, lead.bitrix_error], [EMAIL, lead.email_status]]
+  // Only anketas are copied to Google Drive
+  if (lead.type === 'anketa' && lead.drive_status) items.push([DRIVE, lead.drive_status, lead.drive_error])
   return (
     <span className={`cab-badges${compact ? ' compact' : ''}`}>
       {items.map(([map, status, detail]) => {

@@ -169,6 +169,9 @@ LEADS_EMAIL_TO=
 # Where problem alerts go (default: LEADS_EMAIL_TO)
 ALERT_EMAIL_TO=
 RETENTION_DAYS=
+# Google Drive for anketa copies (OAuth client, see deploy/README.md)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 EOF
   chown "$APP_USER:$APP_USER" "$APP_DIR/shared/server.env"
   chmod 600 "$APP_DIR/shared/server.env"

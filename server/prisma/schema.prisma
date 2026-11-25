@@ -8,16 +8,16 @@ datasource db {
 
 // Which form on buysun.kz the lead came from
 enum LeadType {
-  quick    // "Оставьте заявку": name + phone
+  quick // "Оставьте заявку": name + phone
   callback // phone form at the bottom of the page
-  anketa   // full candidate anketa with PDF and photos
+  anketa // full candidate anketa with PDF and photos
 }
 
 // Delivery to an outside system (Bitrix24 or email)
 enum DeliveryStatus {
   pending // not tried yet
   sent
-  failed  // tried and failed, see *_error
+  failed // tried and failed, see *_error
   skipped // the integration is not configured
 }
 
@@ -29,30 +29,36 @@ enum FileKind {
 }
 
 model Lead {
-  id         Int      @id @default(autoincrement())
-  type       LeadType
-  name       String?
-  phone      String
-  email      String?
+  id          Int       @id @default(autoincrement())
+  type        LeadType
+  name        String?
+  phone       String
+  email       String?
   // Full anketa answers as sent by the form (anketa only)
-  answers    Json?
+  answers     Json?
   // utm_* parameters of the page the person came from
-  utm        Json?
-  consent_at DateTime?
+  utm         Json?
+  consent_at  DateTime?
   // Secret part of the anketa link (buysun.kz/api/a/<token>): whoever has the
   // link sees the PDF, nobody can guess it. A new one cuts off the old link.
-  share_token String? @unique
+  share_token String?   @unique
 
-  bitrix_status  DeliveryStatus @default(pending)
-  bitrix_lead_id Int?
-  bitrix_error   String?
-  email_status   DeliveryStatus @default(pending)
-  email_error    String?
+  bitrix_status   DeliveryStatus @default(pending)
+  bitrix_lead_id  Int?
+  bitrix_error    String?
+  email_status    DeliveryStatus @default(pending)
+  email_error     String?
+  // Copy of the anketa in the agency's Google Drive: its folder there and
+  // which stored file each Drive file holds ({ pdf: { drive_id, file_id } })
+  drive_status    DeliveryStatus @default(skipped)
+  drive_error     String?
+  drive_folder_id String?
+  drive_files     Json?
 
   files      LeadFile[]
   events     LeadEvent[]
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
 
   @@index([created_at])
   @@index([phone])
@@ -78,22 +84,22 @@ model LeadFile {
 
 // Managers who can open the cabinet. Created with scripts/manager.js.
 model User {
-  id                    Int       @id @default(autoincrement())
-  email                 String    @unique
-  name                  String
+  id                   Int       @id @default(autoincrement())
+  email                String    @unique
+  name                 String
   // scrypt hash, see src/services/auth.js
-  password_hash         String
-  must_change_password  Boolean   @default(true)
+  password_hash        String
+  must_change_password Boolean   @default(true)
   // Code from the phone (TOTP); required for everyone
-  totp_secret           String?
-  totp_enabled          Boolean   @default(false)
+  totp_secret          String?
+  totp_enabled         Boolean   @default(false)
   // Last accepted 30-second step, so a code cannot be used twice
-  totp_last_step        Int?
-  failed_attempts       Int       @default(0)
-  locked_until          DateTime?
-  disabled              Boolean   @default(false)
-  last_login_at         DateTime?
-  created_at            DateTime  @default(now())
+  totp_last_step       Int?
+  failed_attempts      Int       @default(0)
+  locked_until         DateTime?
+  disabled             Boolean   @default(false)
+  last_login_at        DateTime?
+  created_at           DateTime  @default(now())
 
   sessions  Session[]
   events    LeadEvent[]
@@ -131,6 +137,20 @@ model LeadEvent {
 
   @@index([lead_id])
   @@map("lead_events")
+}
+
+// The agency's Google Drive, connected once from the cabinet. One row: a new
+// connection replaces it. The app sees only the files it made itself.
+model GoogleDrive {
+  id            Int      @id @default(1)
+  email         String
+  refresh_token String
+  // "BUY SUN — анкеты с сайта": one folder per anketa inside
+  folder_id     String
+  connected_by  Int?
+  created_at    DateTime @default(now())
+
+  @@map("google_drive")
 }
 
 // What a manager puts on the PDF instead of the BUY SUN logo when the file goes

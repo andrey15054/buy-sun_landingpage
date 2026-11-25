@@ -119,6 +119,35 @@ pictures, no logo and no manager name. In Canva: Create a design → Import file
 the text can then be edited. Both partner and Canva files are made from the
 anketa as it is on the screen.
 
+## Google Drive for anketa copies
+
+Anketas are copied to the agency's Google Drive: one folder per anketa with
+the PDF and photos. Two parts.
+
+**1. The site's key from Google (the developer, once, ~10 minutes).** In
+[Google Cloud Console](https://console.cloud.google.com/), with any Google
+account the developer keeps:
+
+1. New project «BUY SUN сайт».
+2. APIs & Services → Library → **Google Drive API** → Enable.
+3. Google Auth Platform (OAuth consent screen): app name «BUY SUN», support
+   email, audience **External**; Data access → add the scope
+   `https://www.googleapis.com/auth/drive.file` (non-sensitive, no Google
+   review needed); Audience → **Publish app** («In production»). In
+   «Testing» Google cuts the access off after 7 days.
+4. Clients → Create client → **Web application**; Authorized redirect URI
+   `https://buysun.kz/api/admin/google/callback`.
+5. Put the Client ID and Client secret into `/opt/buysun/shared/server.env`
+   (`GOOGLE_CLIENT_ID=`, `GOOGLE_CLIENT_SECRET=`), then
+   `sudo systemctl restart buysun-api`.
+
+**2. The agency's Drive (Ahmed, once, 1 minute).** Cabinet → «Google Диск» at
+the top (`https://buysun.kz/admin/#/google`) → «Подключить Google Диск» →
+the Google account for the anketas → «Разрешить». No password is shared; the
+site sees only the files it made. All anketas already on the site are copied
+at once, new ones right after they are sent. «Отключить» there gives the
+access back; the copies stay in Drive.
+
 ## Everyday
 
 - **Updating the site**: merge into `main` on GitHub. Within 5 minutes the
