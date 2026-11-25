@@ -19,6 +19,18 @@
   gap: clamp(1.5rem, 3vw, 2rem);
 }
 
+.footer-privacy {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+}
+
+.footer-privacy:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
 .footer-brand {
   font-family: 'Inter', sans-serif;
   font-size: clamp(24px, 4vw, 39px);

@@ -94,6 +94,7 @@ function Footer() {
             <img src="/inst.png" alt="Instagram" />
           </motion.a>
         </motion.div>
+        <a className="footer-privacy" href="/privacy.html">Политика конфиденциальности</a>
       </div>
     </footer>
   )
