@@ -35,6 +35,42 @@ async function loadStoredPhoto(leadId, file) {
   return photo
 }
 
+// The anketa's own link: opens its PDF without the cabinet, for Direct,
+// WhatsApp or a partner. A new link cuts off the old one.
+function ShareLink({ lead, onRenewed, onError }) {
+  const link = `${window.location.origin}/api/a/${lead.share_token}`
+  const [note, setNote] = useState('')
+  const say = (text) => { setNote(text); setTimeout(() => setNote(''), 2500) }
+  const copy = async (e) => {
+    try {
+      await navigator.clipboard.writeText(link)
+    } catch {
+      e.currentTarget.parentElement.querySelector('input').select()
+      document.execCommand('copy')
+    }
+    say('Скопировано')
+  }
+  const renew = async () => {
+    if (!window.confirm('Сделать новую ссылку? Старая перестанет открываться у всех, кому её отправили.')) return
+    try {
+      const { share_token } = await api('POST', `/leads/${lead.id}/share-link`)
+      onRenewed(share_token)
+      say('Новая ссылка готова')
+    } catch (err) { onError(err) }
+  }
+  return (
+    <div className="cab-share">
+      <label htmlFor="share-link">Ссылка на анкету (PDF откроется без входа в кабинет)</label>
+      <div className="cab-share-row">
+        <input id="share-link" className="cab-search" readOnly value={link} onFocus={(e) => e.target.select()} />
+        <button type="button" className="cab-btn secondary" onClick={copy}>Скопировать</button>
+        <button type="button" className="cab-btn secondary" onClick={renew}>Новая ссылка</button>
+        {note && <span className="cab-ok">{note}</span>}
+      </div>
+    </div>
+  )
+}
+
 function LeadPage({ id, onError }) {
   const [lead, setLead] = useState(null)
   const [error, setError] = useState('')
@@ -73,6 +109,10 @@ function LeadPage({ id, onError }) {
           {lead.bitrix_url && <a className="cab-btn secondary" href={lead.bitrix_url} target="_blank" rel="noopener noreferrer">Открыть в Битрикс24</a>}
         </div>
       </div>
+
+      {lead.type === 'anketa' && lead.share_token && (
+        <ShareLink lead={lead} onError={onError} onRenewed={(share_token) => setLead((l) => ({ ...l, share_token }))} />
+      )}
 
       {lead.type === 'anketa'
         ? <AnketaEditor lead={lead} onSaved={setLead} onError={onError} builder={builder} />

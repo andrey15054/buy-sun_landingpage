@@ -558,6 +558,54 @@
   line-height: 1.6;
 }
 
+.share-link {
+  max-width: 520px;
+  margin: 0 auto 28px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #F0F7FF;
+  text-align: left;
+}
+
+.share-link-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.share-link-row input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #C9DDF2;
+  border-radius: 8px;
+  font: 14px 'Inter', sans-serif;
+  color: #333;
+  background: white;
+}
+
+.share-link-row button {
+  padding: 10px 16px;
+  border: 1px solid #0090FF;
+  border-radius: 8px;
+  background: white;
+  color: #0090FF;
+  font: 600 14px 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.share-link-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
 .result-buttons {
   display: flex;
   gap: 16px;

@@ -164,6 +164,10 @@ a { color: var(--cab-accent); }
 
 /* One lead */
 .cab-back { display: inline-block; margin-bottom: 12px; text-decoration: none; }
+.cab-share { margin: 0 0 20px; padding: 12px 16px; background: var(--cab-card); border: 1px solid var(--cab-line); border-radius: 10px; }
+.cab-share label { display: block; margin-bottom: 6px; color: var(--cab-muted); font-size: 14px; }
+.cab-share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cab-share-row input { flex: 1 1 280px; min-width: 0; }
 .cab-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .cab-head h1 { margin: 0 0 4px; font-size: 26px; }
 .cab-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }

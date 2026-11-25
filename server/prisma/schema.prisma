@@ -39,6 +39,9 @@ model Lead {
   // utm_* parameters of the page the person came from
   utm        Json?
   consent_at DateTime?
+  // Secret part of the anketa link (buysun.kz/api/a/<token>): whoever has the
+  // link sees the PDF, nobody can guess it. A new one cuts off the old link.
+  share_token String? @unique
 
   bitrix_status  DeliveryStatus @default(pending)
   bitrix_lead_id Int?

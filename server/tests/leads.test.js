@@ -239,6 +239,35 @@ describe('without integrations configured', () => {
   })
 })
 
+describe('anketa link', () => {
+  let t
+  before(async () => { t = await startTestApp() })
+  after(async () => { await t.close() })
+
+  it('gives the candidate a link that opens the PDF without the cabinet', async () => {
+    const res = await t.post('/api/leads/anketa', anketaPayload())
+    assert.equal(res.status, 201)
+    assert.match(res.body.share, /^[A-Za-z0-9_-]{32}$/)
+    const lead = await t.prisma.lead.findUnique({ where: { share_token: res.body.share } })
+    assert.equal(lead.name, 'Ivan Petrov')
+
+    // Opened from Direct or WhatsApp: a plain browser, no Origin, no cookie
+    const page = await fetch(`${t.base}/api/a/${res.body.share}`)
+    assert.equal(page.status, 200)
+    assert.equal(page.headers.get('content-type'), 'application/pdf')
+    assert.match(page.headers.get('content-disposition'), /^inline; filename="Ivan_Petrov_BUYSUN\.pdf"/)
+    assert.equal(page.headers.get('x-robots-tag'), 'noindex, nofollow')
+    assert.match(page.headers.get('cache-control'), /no-store/)
+    assert.deepEqual(Buffer.from(await page.arrayBuffer()), PDF)
+
+    for (const wrong of ['x'.repeat(32), 'short', `${res.body.share.slice(0, -1)}A`, '..%2F..%2Fetc']) {
+      const miss = await fetch(`${t.base}/api/a/${wrong}`)
+      assert.equal(miss.status, 404, wrong)
+    }
+    await t.settle()
+  })
+})
+
 describe('a burst of anketas and a restart', () => {
   let t
   before(async () => { t = await startTestApp() })

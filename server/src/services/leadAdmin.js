@@ -1,6 +1,7 @@
 const { decodeDataUrl } = require('../utils/validation')
 const { anketaRows, positionLabel, ANKETA_KEYS } = require('../utils/anketaFields')
 const { logger } = require('../utils/logger')
+const { newShareToken } = require('../utils/shareToken')
 
 const MAX_ID = 2147483647 // largest id the database column holds
 const PAGE_SIZE = 30
@@ -37,6 +38,7 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
       bitrix_error: lead.bitrix_error,
       bitrix_url: bitrixUrl(lead),
       email_status: lead.email_status,
+      share_token: lead.share_token,
       files: lead.files.map((f) => ({ id: f.id, kind: f.kind, mime: f.mime, size: f.size, focus: f.focus, created_at: f.created_at })),
       events: lead.events.map((e) => ({ action: e.action, details: e.details, created_at: e.created_at, user: e.user?.name || null })),
     }
@@ -44,6 +46,14 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
 
   return {
     get,
+
+    async renewShareToken(id) {
+      const lead = await prisma.lead.findUnique({ where: { id }, select: { type: true } })
+      if (!lead) throw Object.assign(new Error('Заявка не найдена'), { status: 404, expose: true })
+      if (lead.type !== 'anketa') throw Object.assign(new Error('Ссылка есть только у анкет'), { status: 400, expose: true })
+      const { share_token } = await prisma.lead.update({ where: { id }, data: { share_token: newShareToken() } })
+      return share_token
+    },
 
     async list({ q, type, page }) {
       const where = {}
