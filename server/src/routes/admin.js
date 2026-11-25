@@ -236,6 +236,26 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates }) {
 
   const leadId = (req) => z.coerce.number().int().positive().parse(req.params.id)
 
+  // Aigerim_Nurlanova_BUYSUN.pdf, Aigerim_Nurlanova_photo.jpg: the candidate's
+  // name, as the partner and Canva files are named in the cabinet
+  const FILE_SUFFIX = { pdf: 'BUYSUN', selfie: 'photo', full_body: 'full_body', additional: 'photo_2' }
+  const downloadName = (file) => {
+    const answers = file.lead?.answers || {}
+    const parts = [answers.firstName, answers.lastName].map((v) => String(v || '').trim()).filter(Boolean)
+    const person = (parts.length ? parts.join('_') : String(file.lead?.name || '').trim())
+      .replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 80)
+    const tail = `_${FILE_SUFFIX[file.kind] || file.kind}.${file.mime === 'application/pdf' ? 'pdf' : 'jpg'}`
+    const plain = `Anketa_${file.lead_id}${tail}`
+    const name = person ? `${person}${tail}` : plain
+    return { name, fallback: /^[A-Za-z0-9_.-]+$/.test(name) ? name : plain }
+  }
+  // A name in Cyrillic goes in filename* (RFC 6266); filename keeps a Latin
+  // one for old programs
+  const contentDisposition = (type, { name, fallback }) => {
+    const encoded = encodeURIComponent(name).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`)
+    return `${type}; filename="${fallback}"; filename*=UTF-8''${encoded}`
+  }
+
   router.get('/leads/:id', loadSession, requireFull, async (req, res, next) => {
     try {
       const lead = await leadAdmin.get(leadId(req))
@@ -248,11 +268,12 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates }) {
     try {
       const file = await prisma.leadFile.findFirst({
         where: { id: z.coerce.number().int().positive().parse(req.params.fileId), lead_id: leadId(req) },
+        include: { lead: { select: { name: true, answers: true } } },
       })
       if (!file) throw fail(404, 'Файл не найден')
       const buffer = await storage.read(file.path)
       res.set('Content-Type', file.mime)
-      res.set('Content-Disposition', `${req.query.download ? 'attachment' : 'inline'}; filename="${file.kind}-${file.lead_id}${file.mime === 'application/pdf' ? '.pdf' : '.jpg'}"`)
+      res.set('Content-Disposition', contentDisposition(req.query.download ? 'attachment' : 'inline', downloadName(file)))
       res.send(buffer)
     } catch (err) { next(err) }
   })
