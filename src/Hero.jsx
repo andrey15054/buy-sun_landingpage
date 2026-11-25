@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import ContactModal from './ContactModal'
 import ResumeModal from './ResumeModal'
+import { CONTACTS, whatsappUrl } from './contacts'
 import './Hero.css'
 
 function Hero() {
@@ -46,14 +48,18 @@ function Hero() {
   return (
     <>
     <section className="hero">
+      {/* 720p for screens, 540p for phones (21 MB -> 5 / 3 MB; the video is shown
+          dimmed, so the difference is not visible). The poster shows at once. */}
       <video 
         className="hero-video"
         autoPlay
         loop
         muted
         playsInline
+        poster="/hero-poster.webp"
       >
-        <source src="/hero.mp4" type="video/mp4" />
+        <source src="/hero-540.mp4" type="video/mp4" media="(max-width: 768px)" />
+        <source src="/hero-720.mp4" type="video/mp4" />
       </video>
       <div className="hero-video-overlay"></div>
       <div className="hero-container">
@@ -70,7 +76,7 @@ function Hero() {
               variants={containerVariants}
             >
               <motion.a 
-                href="https://t.me/buysunkz" 
+                href={CONTACTS.telegram} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -82,7 +88,7 @@ function Hero() {
                 <img src="/tg.png" alt="Telegram" />
               </motion.a>
               <motion.a 
-                href="https://www.tiktok.com/@buysun.kz" 
+                href={CONTACTS.tiktok} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -94,7 +100,7 @@ function Hero() {
                 <img src="/tt.png" alt="TikTok" />
               </motion.a>
               <motion.a 
-                href="https://wa.me/77026677171" 
+                href={whatsappUrl} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -106,7 +112,7 @@ function Hero() {
                 <img src="/wa.png" alt="WhatsApp" />
               </motion.a>
               <motion.a 
-                href="https://www.instagram.com/buysun.kz/" 
+                href={CONTACTS.instagram} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon" 
@@ -119,12 +125,12 @@ function Hero() {
               </motion.a>
             </motion.div>
             <motion.a 
-              href="mailto:buysun.kz@mail.ru" 
+              href={`mailto:${CONTACTS.email}`} 
               className="hero-email"
               whileHover={{ opacity: 0.8, x: 5 }}
               variants={itemVariants}
             >
-              buysun.kz@mail.ru
+              {CONTACTS.email}
             </motion.a>
           </motion.div>
           <motion.div 
@@ -187,21 +193,30 @@ function Hero() {
             animate="visible"
           >
             <motion.img 
-              src="/man1.png" 
+              src="/man1.webp" 
               alt="Ахмед"
             />
           </motion.div>
         </div>
       </div>
       </section>
-      <ContactModal 
-        isOpen={isContactModalOpen} 
-        onClose={() => setIsContactModalOpen(false)} 
-      />
-      <ResumeModal 
-        isOpen={isResumeModalOpen} 
-        onClose={() => setIsResumeModalOpen(false)} 
-      />
+      {/* On laptops and tablets the whole page is shrunk with transform: scale
+          (App.css), and inside it position: fixed no longer means "on screen":
+          the windows opened thousands of pixels down the page. Rendering them
+          directly in <body> keeps them on screen at every width. */}
+      {createPortal(
+        <>
+          <ContactModal 
+            isOpen={isContactModalOpen} 
+            onClose={() => setIsContactModalOpen(false)} 
+          />
+          <ResumeModal 
+            isOpen={isResumeModalOpen} 
+            onClose={() => setIsResumeModalOpen(false)} 
+          />
+        </>,
+        document.body
+      )}
     </>
   )
 }

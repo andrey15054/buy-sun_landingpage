@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { CONTACTS, whatsappUrl } from './contacts'
 import './Footer.css'
 
 function Footer() {
@@ -45,7 +46,7 @@ function Footer() {
           viewport={{ once: true, margin: "-50px" }}
         >
           <motion.a 
-            href="https://t.me/buysunkz" 
+            href={CONTACTS.telegram} 
             target="_blank"
             rel="noopener noreferrer"
             className="footer-social-icon" 
@@ -57,7 +58,7 @@ function Footer() {
             <img src="/tg.png" alt="Telegram" />
           </motion.a>
           <motion.a 
-            href="https://www.tiktok.com/@buysun.kz" 
+            href={CONTACTS.tiktok} 
             target="_blank"
             rel="noopener noreferrer"
             className="footer-social-icon" 
@@ -69,7 +70,7 @@ function Footer() {
             <img src="/tt.png" alt="TikTok" />
           </motion.a>
           <motion.a 
-            href="https://wa.me/77026677171" 
+            href={whatsappUrl} 
             target="_blank"
             rel="noopener noreferrer"
             className="footer-social-icon" 
@@ -81,7 +82,7 @@ function Footer() {
             <img src="/wa.png" alt="WhatsApp" />
           </motion.a>
           <motion.a 
-            href="https://www.instagram.com/buysun.kz/" 
+            href={CONTACTS.instagram} 
             target="_blank"
             rel="noopener noreferrer"
             className="footer-social-icon" 

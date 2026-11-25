@@ -229,6 +229,51 @@
   color: white;
 }
 
+/* Draft notice above the form */
+.draft-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #666;
+}
+
+.draft-notice p {
+  margin: 0;
+  flex: 1 1 260px;
+  line-height: 1.4;
+}
+
+.draft-notice.restored {
+  padding: 12px 16px;
+  background: #EEF7FF;
+  border-left: 3px solid #0090FF;
+  border-radius: 8px;
+  color: #03487D;
+}
+
+.draft-reset-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: #0090FF;
+  border: 2px solid #0090FF;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.draft-reset-btn:hover {
+  background: #0090FF;
+  color: white;
+}
+
 /* Form Styles */
 .resume-rules {
   background: #f5f5f5;
@@ -368,6 +413,7 @@
   padding: 8px;
   border: 1px dashed #0090FF;
   background: #f9f9f9;
+  color: #333;
   cursor: pointer;
 }
 
@@ -570,9 +616,20 @@
   transition: all 0.3s;
 }
 
-.back-to-start-btn:hover {
-  background: #0090FF;
-  color: white;
+/* Only with a mouse: on a phone the tap on "Отправить" left this button,
+   which appears under the finger, looking pale as if disabled */
+@media (hover: hover) {
+  .back-to-start-btn:hover {
+    background: #0090FF;
+    color: white;
+  }
+}
+
+.result-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 
 /* Modal Close Button Override */
@@ -695,4 +752,30 @@
   .resume-main-title {
     font-size: 1.25rem;
   }
+}
+
+/* Consent and sending status */
+.consent-group label {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.send-error {
+  margin: 0 0 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #c62828;
+}
+
+.retry-btn {
+  margin-bottom: 24px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #0090FF 0%, #005699 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
 }
