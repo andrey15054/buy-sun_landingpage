@@ -38,6 +38,9 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
       bitrix_error: lead.bitrix_error,
       bitrix_url: bitrixUrl(lead),
       email_status: lead.email_status,
+      drive_status: lead.drive_status,
+      drive_error: lead.drive_error,
+      drive_url: lead.drive_folder_id ? `https://drive.google.com/drive/folders/${lead.drive_folder_id}` : null,
       share_token: lead.share_token,
       files: lead.files.map((f) => ({ id: f.id, kind: f.kind, mime: f.mime, size: f.size, focus: f.focus, created_at: f.created_at })),
       events: lead.events.map((e) => ({ action: e.action, details: e.details, created_at: e.created_at, user: e.user?.name || null })),
@@ -87,6 +90,7 @@ function createLeadAdmin({ prisma, storage, bitrixPortal }) {
           updated_at: l.updated_at,
           bitrix_status: l.bitrix_status,
           email_status: l.email_status,
+          drive_status: l.drive_status,
         })),
       }
     },

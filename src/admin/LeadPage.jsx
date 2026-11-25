@@ -106,6 +106,7 @@ function LeadPage({ id, onError }) {
               Для партнёра
             </button>
           )}
+          {lead.drive_url && <a className="cab-btn secondary" href={lead.drive_url} target="_blank" rel="noopener noreferrer">Папка на Google Диске</a>}
           {lead.bitrix_url && <a className="cab-btn secondary" href={lead.bitrix_url} target="_blank" rel="noopener noreferrer">Открыть в Битрикс24</a>}
         </div>
       </div>

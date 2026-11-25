@@ -3,17 +3,18 @@ const { fileName } = require('../utils/leadText')
 
 const shortError = (err) => String(err?.message || err).slice(0, 1000)
 
-// Sends a stored lead to Bitrix24 and by email, and records the outcome of
-// each in the database. The lead itself is already safe in the database, so a
+// Sends a stored lead to Bitrix24, by email and (anketas) to Google Drive, and
+// records the outcome of each in the database. The lead itself is already safe in the database, so a
 // failure here never loses it.
 //
 // Leads are sent one at a time from a queue: an anketa carries several
 // megabytes of files, and a burst of anketas must not fill the memory of a
 // small server. What is not sent yet stays "pending" in the database, and
 // resumePending() picks it up after a restart (deploy, reboot, crash).
-function createDelivery({ prisma, storage, bitrix, mailer }) {
+function createDelivery({ prisma, storage, bitrix, mailer, drive = null }) {
   async function loadFiles(lead) {
     return Promise.all(lead.files.map(async (file) => ({
+      id: file.id,
       kind: file.kind,
       mime: file.mime,
       name: fileName(file, lead),
@@ -51,6 +52,16 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
     }
   }
 
+  async function toDrive(lead, files) {
+    if (!drive) return { drive_status: 'skipped' }
+    try {
+      return await drive.sync(lead, files)
+    } catch (err) {
+      logger.error('Google Drive delivery failed', { leadId: lead.id, error: shortError(err) })
+      return { drive_status: 'failed', drive_error: shortError(err) }
+    }
+  }
+
   // Only the parts still to do: after a restart a lead already in Bitrix24 is
   // not sent there again. A retry also takes the parts that failed before.
   async function deliver(leadId, { retry = false } = {}) {
@@ -59,14 +70,16 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
     const due = (status) => status === 'pending' || (retry && status === 'failed')
     const toBitrixNow = due(lead.bitrix_status)
     const toEmailNow = due(lead.email_status)
-    if (!toBitrixNow && !toEmailNow) return
+    const toDriveNow = due(lead.drive_status)
+    if (!toBitrixNow && !toEmailNow && !toDriveNow) return
     const files = await loadFiles(lead)
-    const [bitrixResult, emailResult] = await Promise.all([
+    const [bitrixResult, emailResult, driveResult] = await Promise.all([
       toBitrixNow ? toBitrix(lead, files) : {},
       toEmailNow ? toEmail(lead, files) : {},
+      toDriveNow ? toDrive(lead, files) : {},
     ])
-    await prisma.lead.update({ where: { id: leadId }, data: { ...bitrixResult, ...emailResult } })
-    logger.info('Lead delivered', { leadId, bitrix: bitrixResult.bitrix_status, email: emailResult.email_status })
+    await prisma.lead.update({ where: { id: leadId }, data: { ...bitrixResult, ...emailResult, ...driveResult } })
+    logger.info('Lead delivered', { leadId, bitrix: bitrixResult.bitrix_status, email: emailResult.email_status, drive: driveResult.drive_status })
   }
 
   const queue = []
@@ -103,7 +116,7 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
     // At start: everything not yet sent, oldest first
     async resumePending() {
       const pending = await prisma.lead.findMany({
-        where: { OR: [{ bitrix_status: 'pending' }, { email_status: 'pending' }] },
+        where: { OR: [{ bitrix_status: 'pending' }, { email_status: 'pending' }, { drive_status: 'pending' }] },
         select: { id: true },
         orderBy: { id: 'asc' },
       })
@@ -118,7 +131,7 @@ function createDelivery({ prisma, storage, bitrix, mailer }) {
       const now = Date.now()
       const failed = await prisma.lead.findMany({
         where: {
-          OR: [{ bitrix_status: 'failed' }, { email_status: 'failed' }],
+          OR: [{ bitrix_status: 'failed' }, { email_status: 'failed' }, { drive_status: 'failed' }],
           created_at: { gt: new Date(now - withinMs) },
           updated_at: { lte: new Date(now - everyMs) },
         },

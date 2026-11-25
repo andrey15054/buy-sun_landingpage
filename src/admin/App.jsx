@@ -3,8 +3,10 @@ import { api, ApiError } from './api'
 import Login from './Login'
 import LeadList from './LeadList'
 import LeadPage from './LeadPage'
+import GooglePage from './GooglePage'
 
-// #/ is the list, #/leads/123 one lead (the link from Bitrix24 opens it directly)
+// #/ is the list, #/leads/123 one lead (the link from Bitrix24 opens it
+// directly), #/google the Google Drive connection
 const useHashRoute = () => {
   const [hash, setHash] = useState(window.location.hash)
   useEffect(() => {
@@ -13,7 +15,8 @@ const useHashRoute = () => {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
   const match = /^#\/leads\/(\d+)/.exec(hash)
-  return match ? { page: 'lead', id: Number(match[1]) } : { page: 'list' }
+  if (match) return { page: 'lead', id: Number(match[1]) }
+  return /^#\/google/.test(hash) ? { page: 'google' } : { page: 'list' }
 }
 
 function App() {
@@ -48,14 +51,15 @@ function App() {
       <header className="cab-top">
         <a className="cab-brand" href="#/">BUY SUN <span>Кабинет менеджера</span></a>
         <div className="cab-user">
+          <a className="cab-link" href="#/google">Google Диск</a>
           <span>{me.user.name}</span>
           <button type="button" className="cab-link" onClick={logout}>Выйти</button>
         </div>
       </header>
       <main className="cab-main">
-        {route.page === 'lead'
-          ? <LeadPage key={route.id} id={route.id} onError={onError} />
-          : <LeadList onError={onError} />}
+        {route.page === 'lead' ? <LeadPage key={route.id} id={route.id} onError={onError} />
+          : route.page === 'google' ? <GooglePage onError={onError} />
+            : <LeadList onError={onError} />}
       </main>
     </div>
   )

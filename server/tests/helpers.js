@@ -12,6 +12,7 @@ const { createStorage } = require('../src/services/storage')
 const { createBitrix } = require('../src/services/bitrix')
 const { createMailer } = require('../src/services/mailer')
 const { createDelivery } = require('../src/services/delivery')
+const { createGoogleDrive } = require('../src/services/googleDrive')
 
 const ADMIN_URL = process.env.TEST_ADMIN_DATABASE_URL || 'postgresql://buysun:buysun@localhost:5433/postgres'
 const TEST_URL = process.env.TEST_DATABASE_URL || 'postgresql://buysun:buysun@localhost:5433/buysun_test'
@@ -58,7 +59,73 @@ function startFakeBitrix() {
   }))
 }
 
-async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true } = {}) {
+// Fake Google: OAuth (token, userinfo, revoke) and the Drive calls the site
+// makes. `files` is the Drive; deleting from it plays a manager who deleted a
+// folder by hand. `fail.refresh` answers invalid_grant (access revoked).
+function startFakeGoogle() {
+  const files = new Map()
+  const calls = []
+  const fail = { refresh: false }
+  let next = 1
+  const server = http.createServer((req, res) => {
+    const chunks = []
+    req.on('data', (c) => chunks.push(c))
+    req.on('end', () => {
+      const body = Buffer.concat(chunks)
+      const url = new URL(req.url, 'http://x')
+      const send = (status, data) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)) }
+      calls.push({ method: req.method, path: url.pathname, auth: req.headers.authorization || '' })
+      if (url.pathname === '/token') {
+        const form = new URLSearchParams(body.toString())
+        if (form.get('grant_type') === 'authorization_code') {
+          if (form.get('code') !== 'good-code') return send(400, { error: 'invalid_grant' })
+          return send(200, { access_token: 'access-1', refresh_token: 'refresh-1', expires_in: 3600, scope: 'openid email https://www.googleapis.com/auth/drive.file' })
+        }
+        if (fail.refresh) return send(400, { error: 'invalid_grant', error_description: 'Token has been expired or revoked.' })
+        return send(200, { access_token: `access-${next++}`, expires_in: 3600 })
+      }
+      if (url.pathname === '/userinfo') return send(200, { email: 'buysun@gmail.com' })
+      if (url.pathname === '/revoke') return send(200, {})
+      const missing = (id) => id && !files.has(id)
+      if (url.pathname === '/api/files' && req.method === 'POST') {
+        const meta = JSON.parse(body.toString())
+        if (missing(meta.parents?.[0])) return send(404, { error: { message: 'File not found' } })
+        const id = `f${next++}`
+        files.set(id, { ...meta, folder: true })
+        return send(200, { id })
+      }
+      const upload = /^\/upload\/files(?:\/(\w+))?$/.exec(url.pathname)
+      if (upload) {
+        const boundary = /boundary=(\S+)/.exec(req.headers['content-type'])[1]
+        const text = body.toString('latin1')
+        const parts = text.split(`--${boundary}`).slice(1, -1)
+        const meta = JSON.parse(Buffer.from(parts[0].split('\r\n\r\n')[1].trim(), 'latin1').toString('utf8'))
+        const mime = /Content-Type: (\S+)/.exec(parts[1])[1]
+        const size = Buffer.from(parts[1].split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''), 'latin1').length
+        if (upload[1]) {
+          if (missing(upload[1])) return send(404, { error: { message: 'File not found' } })
+          files.set(upload[1], { ...files.get(upload[1]), name: meta.name, mime, size, updated: true })
+          return send(200, { id: upload[1] })
+        }
+        if (missing(meta.parents?.[0])) return send(404, { error: { message: 'File not found' } })
+        const id = `f${next++}`
+        files.set(id, { ...meta, mime, size })
+        return send(200, { id })
+      }
+      send(404, { error: { message: `no ${req.method} ${url.pathname}` } })
+    })
+  })
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => {
+    const base = `http://127.0.0.1:${server.address().port}`
+    const urls = { auth: 'https://accounts.google.test/auth', token: `${base}/token`, revoke: `${base}/revoke`, userinfo: `${base}/userinfo`, api: `${base}/api`, upload: `${base}/upload` }
+    // Everything inside a folder, as the Drive shows it
+    const inFolder = (id) => [...files.entries()].filter(([, f]) => f.parents?.[0] === id).map(([fid, f]) => ({ id: fid, ...f }))
+    const removeFolder = (id) => { for (const f of inFolder(id)) removeFolder(f.id); files.delete(id) }
+    resolve({ urls, files, calls, fail, inFolder, removeFolder, close: () => server.close() })
+  }))
+}
+
+async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true, google = false } = {}) {
   await prepareDatabase()
   const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'buysun-uploads-'))
   const bitrixServer = await startFakeBitrix()
@@ -74,7 +141,7 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
     ...env,
   })
   const prisma = createPrisma(TEST_URL)
-  await prisma.$executeRawUnsafe('TRUNCATE leads, lead_files, lead_events, sessions, users, partner_templates RESTART IDENTITY CASCADE')
+  await prisma.$executeRawUnsafe('TRUNCATE leads, lead_files, lead_events, sessions, users, partner_templates, google_drive RESTART IDENTITY CASCADE')
   const storage = createStorage(config.uploadDir)
 
   const mails = []
@@ -88,9 +155,13 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
   const bitrix = config.bitrix ? createBitrix(config.bitrix) : null
   const mailer = config.mail?.to ? createMailer(config.mail, { transporter }) : null
 
-  const delivery = createDelivery({ prisma, storage, bitrix, mailer })
+  const googleServer = google ? await startFakeGoogle() : null
+  const drive = googleServer
+    ? createGoogleDrive({ prisma, clientId: 'client-1', clientSecret: 'secret-1', redirectUri: `${SITE}/api/admin/google/callback`, urls: googleServer.urls })
+    : null
+  const delivery = createDelivery({ prisma, storage, bitrix, mailer, drive })
 
-  const app = createApp({ config, prisma, storage, delivery })
+  const app = createApp({ config, prisma, storage, delivery, drive })
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)) })
   const base = `http://127.0.0.1:${server.address().port}`
 
@@ -112,12 +183,12 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
   // A browser of the cabinet: keeps the session cookie, sends the cabinet header
   const cabinet = () => {
     let cookie = ''
-    const call = async (method, url, body, { header = true } = {}) => {
+    const call = async (method, url, body, { header = true, redirect = 'follow' } = {}) => {
       const headers = { Origin: SITE }
       if (cookie) headers.Cookie = cookie
       if (header) headers['X-Requested-With'] = 'buysun-admin'
       if (body !== undefined) headers['Content-Type'] = 'application/json'
-      const response = await fetch(base + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+      const response = await fetch(base + url, { method, headers, redirect, body: body === undefined ? undefined : JSON.stringify(body) })
       const setCookie = response.headers.get('set-cookie')
       if (setCookie) cookie = setCookie.split(';')[0].endsWith('=') ? '' : setCookie.split(';')[0]
       const type = response.headers.get('content-type') || ''
@@ -131,10 +202,11 @@ async function startTestApp({ env = {}, bitrixEnabled = true, mailEnabled = true
   }
 
   return {
-    config, prisma, storage, uploadDir, bitrixServer, mails, mailBehaviour, post, settle, delivery, cabinet, base,
+    config, prisma, storage, uploadDir, bitrixServer, googleServer, mails, mailBehaviour, post, settle, delivery, cabinet, base,
     async close() {
       await new Promise((resolve) => server.close(resolve))
       bitrixServer.close()
+      googleServer?.close()
       await prisma.$disconnect()
       fs.rmSync(uploadDir, { recursive: true, force: true })
     },

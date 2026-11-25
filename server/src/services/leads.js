@@ -28,6 +28,8 @@ function createLeadService({ prisma, storage }) {
           utm: utm || undefined,
           consent_at: new Date(),
           share_token: newShareToken(),
+          // Copied to Google Drive if it is connected (skipped otherwise)
+          drive_status: 'pending',
         },
       })
 

@@ -24,6 +24,8 @@ const envSchema = z.object({
   MAIL_FROM: optionalString,
   LEADS_EMAIL_TO: optionalString,
   RETENTION_DAYS: optionalInt,
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
 })
 
 // Reads and checks the environment once at start, so a typo in .env stops the
@@ -75,6 +77,15 @@ function loadConfig(env = process.env) {
         }
       : null,
     retentionDays: e.RETENTION_DAYS ?? null,
+    // Google Drive for anketa copies: the OAuth client of the site (Google
+    // Cloud, "Web application", redirect URI below). Empty: no Drive button.
+    google: e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET
+      ? {
+          clientId: e.GOOGLE_CLIENT_ID,
+          clientSecret: e.GOOGLE_CLIENT_SECRET,
+          redirectUri: `${allowedOrigins[0] || 'http://localhost:5173'}/api/admin/google/callback`,
+        }
+      : null,
   }
 }
 

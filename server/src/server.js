@@ -7,6 +7,7 @@ const { createStorage } = require('./services/storage')
 const { createBitrix } = require('./services/bitrix')
 const { createMailer } = require('./services/mailer')
 const { createDelivery } = require('./services/delivery')
+const { createGoogleDrive } = require('./services/googleDrive')
 const { scheduleCleanup } = require('./services/cleanup')
 const { logger } = require('./utils/logger')
 
@@ -25,8 +26,11 @@ const mailer = config.mail?.to ? createMailer(config.mail) : null
 if (!bitrix) logger.warn('BITRIX_WEBHOOK_URL is not set: leads will not go to Bitrix24')
 if (!mailer) logger.warn('SMTP_HOST or LEADS_EMAIL_TO is not set: no email copies of leads')
 
-const delivery = createDelivery({ prisma, storage, bitrix, mailer })
-const app = createApp({ config, prisma, storage, delivery })
+const drive = config.google ? createGoogleDrive({ prisma, ...config.google }) : null
+if (!drive) logger.warn('GOOGLE_CLIENT_ID is not set: anketas are not copied to Google Drive')
+
+const delivery = createDelivery({ prisma, storage, bitrix, mailer, drive })
+const app = createApp({ config, prisma, storage, delivery, drive })
 const stopCleanup = scheduleCleanup({ prisma, storage, retentionDays: config.retentionDays })
 
 const server = app.listen(config.port, config.host, () => {
