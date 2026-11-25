@@ -71,6 +71,12 @@ function drawPartnerHeader(pdf, { logo, header, contacts }, box) {
 // additionalPhoto1 as { dataUrl, width, height, focus? }. Returns a Blob.
 // partner: { logo: { dataUrl, width, height } | null, header, contacts } makes
 // the file for a partner: their header instead of BUY SUN, no service fields.
+// Values are 17 pt; jsPDF puts wrapped lines 1.15 × 17 pt apart (about 6.9 mm).
+// A one-line row keeps its old height, every wrapped line adds its real
+// height, so a long place of work no longer runs into the next row.
+const WRAP_LINE = (17 * 1.15 * 25.4) / 72
+const rowHeight = (lines) => 8 + (lines.length - 1) * WRAP_LINE
+
 export async function buildAnketaPdf(formData, { partner } = {}) {
   // Loaded only when needed: keeps 400 KB of PDF code out of the first page load
   const { default: jsPDF } = await import('jspdf')
@@ -96,6 +102,17 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   // Draw left column background (dark blue)
   pdf.setFillColor(...darkBlue)
   pdf.rect(0, 0, leftColWidth, pageHeight, 'F')
+
+  // A long anketa (three jobs, long hobbies) does not fit on one page: the
+  // right column goes on to the next page instead of being cut off
+  const bottom = pageHeight - 12
+  const roomFor = (height) => {
+    if (rightY + height <= bottom) return
+    pdf.addPage()
+    pdf.setFillColor(...darkBlue)
+    pdf.rect(0, 0, leftColWidth, pageHeight, 'F')
+    rightY = 20
+  }
 
   // ========== LEFT COLUMN ==========
   let leftY = 15
@@ -148,7 +165,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     pdf.setFont(undefined, 'bold')
     
     // Move Y by number of lines * line height
-    leftY += valueLines.length * 6  // 6 is the line height
+    leftY += 6 + (valueLines.length - 1) * WRAP_LINE
   }
 
   addLeftField('DATE OF BIRTH', formData.birthDate)
@@ -218,20 +235,22 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   // Helper to add field on the right with label and optional wrapping value
   const addRightField = (label, value) => {
     if (!value || String(value).trim() === '') return
+    pdf.setFontSize(17)
+    pdf.setFont(undefined, 'normal')
+    const availableWidth = pageWidth - rightPadding - rightValueX
+    const valueLines = pdf.splitTextToSize(String(value), availableWidth)
+    roomFor(rowHeight(valueLines))
+
     pdf.setFontSize(15)
     pdf.setFont(undefined, 'bold')
     pdf.setTextColor(...black)
     pdf.text(`${label}: `, rightX, rightY)
-    
     pdf.setFontSize(17)
     pdf.setFont(undefined, 'normal')
-    
-    const availableWidth = pageWidth - rightPadding - rightValueX
-    const valueLines = pdf.splitTextToSize(String(value), availableWidth)
     pdf.text(valueLines, rightValueX, rightY)
     
     // Update rightY based on number of lines
-    rightY += Math.max(valueLines.length * 6, 8) 
+    rightY += rowHeight(valueLines)
   }
 
   // Name and position (no label, just value)
@@ -266,59 +285,12 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     
     if (!hasPosition && !hasCompany && !hasCountry) return false
     
-    pdf.setFontSize(17) // Same as other labels and values
-    pdf.setFont(undefined, 'bold')
-    
-    const availableValueWidth = pageWidth - rightPadding - rightValueX
-
-    if (hasPosition) {
-      pdf.setFontSize(15)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Position: ', rightX, rightY)
-      pdf.setFontSize(17)
-      pdf.setFont(undefined, 'normal')
-      const posLines = pdf.splitTextToSize(position, availableValueWidth)
-      pdf.text(posLines, rightValueX, rightY)
-      rightY += Math.max(posLines.length * 6, 8)
-    }
-    
-    if (hasCompany) {
-      pdf.setFontSize(15)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Place of work: ', rightX, rightY)
-      pdf.setFontSize(17)
-      pdf.setFont(undefined, 'normal')
-      const companyLines = pdf.splitTextToSize(company, availableValueWidth)
-      pdf.text(companyLines, rightValueX, rightY)
-      rightY += Math.max(companyLines.length * 6, 8)
-    }
-    
-    if (hasWorkStart || hasWorkEnd) {
-      pdf.setFontSize(15)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Work period: ', rightX, rightY)
-      pdf.setFontSize(17)
-      pdf.setFont(undefined, 'normal')
-      let periodText = ''
-      if (hasWorkStart && hasWorkEnd) periodText = `${workStart} - ${workEnd}`
-      else if (hasWorkStart) periodText = workStart
-      else periodText = workEnd
-      
-      const periodLines = pdf.splitTextToSize(periodText, availableValueWidth)
-      pdf.text(periodLines, rightValueX, rightY)
-      rightY += Math.max(periodLines.length * 6, 8)
-    }
-    
-    if (hasCountry) {
-      pdf.setFontSize(15)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Country: ', rightX, rightY)
-      pdf.setFontSize(17)
-      pdf.setFont(undefined, 'normal')
-      const countryLines = pdf.splitTextToSize(country, availableValueWidth)
-      pdf.text(countryLines, rightValueX, rightY)
-      rightY += Math.max(countryLines.length * 6, 8)
-    }
+    // A job is kept together on one page when it fits
+    roomFor(4 * 8)
+    addRightField('Position', position)
+    addRightField('Place of work', company)
+    if (hasWorkStart || hasWorkEnd) addRightField('Work period', hasWorkStart && hasWorkEnd ? `${workStart} - ${workEnd}` : (hasWorkStart ? workStart : workEnd))
+    addRightField('Country', country)
     rightY += 4
 
     // Divider only if block was rendered
@@ -345,6 +317,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     pdf.setTextColor(...black) // Black color
     pdf.setFontSize(20) // Increased from 17
     pdf.setFont(undefined, 'bold')
+    roomFor(14 + 8)
     pdf.text('EXPERIENCE', rightCenter, rightY, { align: 'center' })
     rightY += 14
 
@@ -364,6 +337,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     pdf.setTextColor(...black) // Black color
     pdf.setFontSize(20) // Increased from 17
     pdf.setFont(undefined, 'bold')
+    roomFor(14 + 8)
     pdf.text('LANGUAGES:', rightCenter, rightY, { align: 'center' })
     rightY += 14
 
@@ -398,6 +372,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     pdf.setTextColor(...black) // Black color
     pdf.setFontSize(20) // Increased from 17
     pdf.setFont(undefined, 'bold')
+    roomFor(14 + 8)
     pdf.text('HOBBY AND INTERESTS', rightCenter, rightY, { align: 'center' })
     rightY += 14
 
@@ -408,12 +383,14 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     // Display courses and hobbies on separate lines
     if (formData.courses && formData.courses.trim()) {
       const coursesLines = pdf.splitTextToSize(formData.courses.trim(), rightColWidth - rightPadding * 2)
+      roomFor(coursesLines.length * WRAP_LINE * 1.3)
       pdf.text(coursesLines, rightX, rightY, { lineHeightFactor: 1.5 })
       rightY += coursesLines.length * 6 * 1.5 + 2 // Small space after courses
     }
     
     if (formData.hobbies && formData.hobbies.trim()) {
       const hobbiesLines = pdf.splitTextToSize(formData.hobbies.trim(), rightColWidth - rightPadding * 2)
+      roomFor(hobbiesLines.length * WRAP_LINE * 1.3)
       pdf.text(hobbiesLines, rightX, rightY, { lineHeightFactor: 1.5 })
     }
   }
