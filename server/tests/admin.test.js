@@ -171,6 +171,11 @@ describe('cabinet anketas', () => {
     const pdf = await c.call('GET', `/api/admin/leads/${leadId}/files/${lead.files.find((f) => f.kind === 'pdf').id}`)
     assert.equal(pdf.headers.get('content-type'), 'application/pdf')
     assert.deepEqual(pdf.body, PDF)
+    // Downloaded under the candidate's name, like the partner and Canva files
+    const download = await c.call('GET', `/api/admin/leads/${leadId}/files/${lead.files.find((f) => f.kind === 'pdf').id}?download=1`)
+    assert.equal(download.headers.get('content-disposition'), `attachment; filename="${lead.answers.firstName}_${lead.answers.lastName}_BUYSUN.pdf"; filename*=UTF-8''${lead.answers.firstName}_${lead.answers.lastName}_BUYSUN.pdf`)
+    const selfie = await c.call('GET', `/api/admin/leads/${leadId}/files/${lead.files.find((f) => f.kind === 'selfie').id}`)
+    assert.match(selfie.headers.get('content-disposition'), /^inline; filename="Ivan_[A-Za-z]+_photo\.jpg"/)
   })
 
   it('saves an edited anketa with a new PDF and a replaced photo, and records who did it', async () => {
