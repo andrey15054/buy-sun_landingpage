@@ -1,4 +1,4 @@
-import { applyPdfFonts } from './pdfFonts'
+import { applyPdfFonts, TITLE_FONT, TEXT_FONT } from './pdfFonts'
 import { cropRoundPhoto, fitInBox } from './photoUtils'
 import logoAnketa from '/logo_anketa.png'
 
@@ -65,352 +65,276 @@ function drawPartnerHeader(pdf, { logo, header, contacts }, box) {
   }
 }
 
-// The anketa PDF exactly as candidates get it. Used by the form on the site
-// and by the manager cabinet, so an edited anketa looks the same.
+// The anketa PDF exactly as candidates get it, in the agency's Canva template
+// («Копия резюме для турции»): a blue left column with the round photo, the
+// name, personal details, education, courses and interests; on the right the
+// logo, the vacancy, up to three jobs and the languages; the photos on the
+// next page. Used by the form on the site and by the manager cabinet, so an
+// edited anketa looks the same.
 // formData: the anketa answers plus selfiePhoto, fullBodyPhoto and
 // additionalPhoto1 as { dataUrl, width, height, focus? }. Returns a Blob.
 // partner: { logo: { dataUrl, width, height } | null, header, contacts } makes
-// the file for a partner: their header instead of BUY SUN, no service fields.
-// Values are 17 pt; jsPDF puts wrapped lines 1.15 × 17 pt apart (about 6.9 mm).
-// A one-line row keeps its old height, every wrapped line adds its real
-// height, so a long place of work no longer runs into the next row.
-const WRAP_LINE = (17 * 1.15 * 25.4) / 72
-const rowHeight = (lines) => 8 + (lines.length - 1) * WRAP_LINE
+// the file for a partner: their header instead of BUY SUN.
+// All sizes are in mm, measured on the template.
+
+const PAGE_W = 210
+const PAGE_H = 297
+const COL_W = 82.6 // the blue column
+const BLUE = [51, 83, 132] // #335384, as in the template
+const WHITE = [255, 255, 255]
+const BLACK = [0, 0, 0]
+const PT = 25.4 / 72 // one point in mm
+
+// The answers in words, as the template shows them
+const POSITIONS = {
+  waiter: 'Waiter', bartender: 'Bartender', receptionist: 'Receptionist', housekeeping: 'Housekeeping',
+  kitchen: 'Kitchen', animator: 'Animator', other: 'Other',
+}
+const MARITAL = { single: 'Single', married: 'Married', divorced: 'Divorced' }
+const clean = (v) => {
+  const text = String(v ?? '').trim()
+  return text === '-' || text === '—' ? '' : text
+}
+const capitalize = (v) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : v)
+// 2002-06-18 → 18.06.2002
+const dateText = (v) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean(v))
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : clean(v)
+}
+const range = (from, to) => (from && to ? `${from} – ${to}` : from || to || '')
 
 export async function buildAnketaPdf(formData, { partner } = {}) {
   // Loaded only when needed: keeps 400 KB of PDF code out of the first page load
   const { default: jsPDF } = await import('jspdf')
   const pdf = new jsPDF('p', 'mm', 'a4')
   await applyPdfFonts(pdf)
-  const pageWidth = 210
-  const pageHeight = 297
-  const leftColWidth = 85
-  const rightColStart = leftColWidth
-  const rightColWidth = pageWidth - leftColWidth
-  const leftPadding = 8
-  const rightPadding = 10
-  const leftCenter = leftColWidth / 2
-  const rightCenter = rightColStart + rightColWidth / 2
+  const f = (key) => clean(formData[key])
 
-  // Colors
-  const darkBlue = [3, 72, 125] // #03487D
-  const gold = [218, 165, 32] // Gold for logo
-  const white = [255, 255, 255]
-  const black = [0, 0, 0]
-  const gray = [100, 100, 100]
+  // Labels and headings: the template's wide capitals, spaced out on the right
+  const title = (size, color, space = 0) => {
+    pdf.setFont(TITLE_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(space)
+  }
+  const text = (size, color) => { pdf.setFont(TEXT_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(0) }
+  // jsPDF leaves the letter spacing out of the width
+  const titleWidth = (str) => pdf.getTextWidth(str) + pdf.getCharSpace() * str.length
+  const lineH = (size) => size * PT * 1.2
 
-  // Draw left column background (dark blue)
-  pdf.setFillColor(...darkBlue)
-  pdf.rect(0, 0, leftColWidth, pageHeight, 'F')
+  const paintPage = () => {
+    pdf.setFillColor(...BLUE)
+    pdf.rect(0, 0, COL_W, PAGE_H, 'F')
+  }
+  paintPage()
 
-  // A long anketa (three jobs, long hobbies) does not fit on one page: the
-  // right column goes on to the next page instead of being cut off
-  const bottom = pageHeight - 12
-  const roomFor = (height) => {
-    if (rightY + height <= bottom) return
-    pdf.addPage()
-    pdf.setFillColor(...darkBlue)
-    pdf.rect(0, 0, leftColWidth, pageHeight, 'F')
-    rightY = 20
+  // A label and its value on one line; a value that does not fit goes on to
+  // the next lines from the left edge. Returns the height used.
+  // dry: only measures, so the right column can be fitted to the page first
+  const labelled = (label, value, { x, y, right, size = 12, labelSize = size, space = 0, color, below = false, dry = false }) => {
+    title(labelSize, color, space)
+    if (!dry) pdf.text(`${label}:`, x, y, { baseline: 'top' })
+    const labelEnd = x + titleWidth(`${label}:`) + 2
+    text(size, color)
+    const v = String(value)
+    if (!below && pdf.getTextWidth(v) <= right - labelEnd) {
+      if (!dry) pdf.text(v, labelEnd, y, { baseline: 'top' })
+      return lineH(size)
+    }
+    const lines = pdf.splitTextToSize(v, right - x)
+    if (!dry) pdf.text(lines, x, y + lineH(size), { baseline: 'top', lineHeightFactor: 1.2 })
+    return lineH(size) * (1 + lines.length)
   }
 
   // ========== LEFT COLUMN ==========
-  let leftY = 15
-
+  const leftX = 6.2
+  const leftRight = COL_W - 3
+  const leftCenter = COL_W / 2
   if (formData.selfiePhoto) {
-    const roundPhoto = await cropRoundPhoto(formData.selfiePhoto, darkBlue)
-    // Add circular photo (60x60mm - 20% larger)
-    pdf.addImage(roundPhoto, 'JPEG', leftColWidth / 2 - 30, leftY, 60, 60)
+    const round = await cropRoundPhoto(formData.selfiePhoto, BLUE)
+    pdf.addImage(round, 'JPEG', leftCenter - 33, 4, 66, 66)
   }
+  let leftY = 74
 
-  leftY += 70
-
-  // Calculate right column position for EXPERIENCE to align with PERSONAL DETAILS
-  // rightY starts at 15, +30 for logo, +9 for name, +6 for divider, +5 for spacing = 65
-  // Then EXPERIENCE title starts at 65
-  // So leftY should also be at 65 for PERSONAL DETAILS
-  const experienceStartY = 15 + 30 + 9 + 6 + 5 // Logo + name + divider + spacing
-  if (leftY < experienceStartY) {
-    leftY = experienceStartY
-  }
-
-  // PERSONAL DETAILS section - aligned with EXPERIENCE (same title size)
-  pdf.setTextColor(...white)
-  pdf.setFontSize(20)
-  pdf.setFont(undefined, 'bold')
-  pdf.text('PERSONAL DETAILS', leftCenter, leftY, { align: 'center' })
-  leftY += 14
-
-  pdf.setFontSize(17)
-  pdf.setFont(undefined, 'bold')
-
-  const addLeftField = (label, value) => {
-    // Skip empty fields
-    if (!value || value.trim() === '' || value === '-' || value === ' - ') return
-    pdf.setFontSize(15) // Changed from 17
-    pdf.setFont(undefined, 'bold')
-    // Label on current line
-    pdf.text(`${label}:`, leftPadding, leftY)
-    leftY += 6  // Move to next line
-
-    pdf.setFontSize(17)
-    pdf.setFont(undefined, 'normal')
-    
-    // Wrap text to fit column width
-    const availableWidth = leftColWidth - leftPadding * 2
-    const valueLines = pdf.splitTextToSize(String(value), availableWidth)
-    
-    // Value on next line(s), same level (left-aligned)
-    pdf.text(valueLines, leftPadding, leftY)
-    pdf.setFont(undefined, 'bold')
-    
-    // Move Y by number of lines * line height
-    leftY += 6 + (valueLines.length - 1) * WRAP_LINE
-  }
-
-  addLeftField('DATE OF BIRTH', formData.birthDate)
-  addLeftField('HEIGHT', formData.height ? `${formData.height} cm` : '')
-  addLeftField('WEIGHT', formData.weight ? `${formData.weight} kg` : '')
-  addLeftField('MARITAL STATUS', formData.maritalStatus)
-  // Only show START FINISH if both dates are filled
-  if (formData.startMonth && formData.startDay && formData.endMonth && formData.endDay) {
-    addLeftField('START FINISH', `${formData.startMonth}/${formData.startDay} - ${formData.endMonth}/${formData.endDay}`)
-  }
-  addLeftField('CITIZENSHIP', formData.citizenship)
-  addLeftField('CITY', formData.city)
-  addLeftField('FATHER NAME', formData.fatherName)
-  addLeftField('MOTHER NAME', formData.motherName)
-
-  leftY += 10
-
-  // The BUY SUN manager who advised the candidate is a service field: never in a partner's file
-  const manager = partner ? '' : formData.manager
-
-  // EDUCATION section - only show if there's education data (same title size as EXPERIENCE)
-  const hasEducation = formData.institution || formData.specialty || formData.studyStart || formData.studyEnd || manager
-  if (hasEducation) {
-    pdf.setFontSize(20)
-    pdf.setFont(undefined, 'bold')
-    pdf.text('EDUCATION', leftCenter, leftY, { align: 'center' })
-    leftY += 14
-
-    pdf.setFontSize(17)
-    addLeftField('NAME OF EMPLOYER', formData.institution)
-    addLeftField('MAJOR', formData.specialty)
-    // Only show DATE if both start and end are filled
-    if (formData.studyStart && formData.studyEnd) {
-      addLeftField('DATE', `${formData.studyStart} - ${formData.studyEnd}`)
-    } else if (formData.studyStart) {
-      addLeftField('DATE', formData.studyStart)
-    } else if (formData.studyEnd) {
-      addLeftField('DATE', formData.studyEnd)
+  // The candidate's name under the photo
+  const name = [f('firstName'), f('lastName')].filter(Boolean).join(' ')
+  if (name) {
+    // Smaller for a long name, so it stays within two lines
+    let size = 15
+    let lines
+    for (;;) {
+      title(size, WHITE)
+      lines = pdf.splitTextToSize(name.toUpperCase(), leftRight - leftX)
+      if (lines.length <= 2 || size <= 10) break
+      size -= 1
     }
-    addLeftField('MANAGER', manager)
+    pdf.text(lines, leftCenter, leftY, { align: 'center', baseline: 'top', lineHeightFactor: 1.15 })
+    leftY += lines.length * size * PT * 1.15 + 5
+  }
+
+  const heading = (label, x, y) => {
+    const left = x === leftCenter
+    title(17, left ? WHITE : BLACK, left ? 0 : 0.3)
+    pdf.text(label, x - titleWidth(label) / 2, y, { baseline: 'top' })
+  }
+
+  heading('PERSONAL DETAILS', leftCenter, leftY)
+  leftY += 12
+  const personal = [
+    ['DATE OF BIRTH', dateText(formData.birthDate)],
+    ['HEIGHT', f('height') && `${f('height')} cm`],
+    ['WEIGHT', f('weight') && `${f('weight')} kg`],
+    ['MARITAL STATUS', MARITAL[f('maritalStatus')] || capitalize(f('maritalStatus'))],
+    ['START FINISH', f('startDay') && f('startMonth') && f('endDay') && f('endMonth')
+      ? `${f('startDay')}.${f('startMonth')} – ${f('endDay')}.${f('endMonth')}` : ''],
+    ['CITIZENSHIP', f('citizenship')],
+    ['CITY', f('city')],
+  ]
+  for (const [label, value] of personal) {
+    if (!value) continue
+    leftY += labelled(label, value, { x: leftX, y: leftY, right: leftRight, labelSize: 12.5, color: WHITE }) + 4.6
+  }
+
+  const education = [
+    ['NAME OF EMPLOYER', f('institution')],
+    ['MAJOR', f('specialty')],
+    ['DATE', range(f('studyStart'), f('studyEnd'))],
+  ].filter(([, v]) => v)
+  if (education.length) {
+    leftY += 4
+    heading('EDUCATION', leftCenter, leftY)
+    leftY += 12
+    for (const [label, value] of education) {
+      leftY += labelled(label, value, { x: leftX, y: leftY, right: leftRight, labelSize: 12.5, color: WHITE, below: true }) + 4.6
+    }
+  }
+
+  // Courses and hobbies at the bottom of the column, smaller if they are long
+  const interests = [f('courses'), f('hobbies')].filter(Boolean)
+  if (interests.length) {
+    leftY += 4
+    title(12.5, WHITE, 0.2)
+    pdf.text('COURSES AND INTERESTS', leftX, leftY, { baseline: 'top' })
+    leftY += 9
+    const room = PAGE_H - 8 - leftY
+    let size = 12
+    let lines
+    for (;;) {
+      text(size, WHITE)
+      lines = interests.flatMap((p) => pdf.splitTextToSize(p, leftRight - leftX))
+      if (lines.length * lineH(size) <= room || size <= 8) break
+      size -= 0.5
+    }
+    const fit = Math.max(1, Math.floor(room / lineH(size)))
+    if (lines.length > fit) lines = [...lines.slice(0, fit - 1), `${lines[fit - 1].replace(/\s*\S*$/, '')}…`]
+    pdf.text(lines, leftX, leftY, { baseline: 'top', lineHeightFactor: 1.2 })
   }
 
   // ========== RIGHT COLUMN ==========
-  let rightY = 15
-  const rightX = rightColStart + rightPadding
-  const rightValueX = rightX + 58 // Value start position so label and value don't blend
+  const rightX = 89.6
+  const rightEnd = 206.8
+  const rightCenter = (COL_W + PAGE_W) / 2
+  const bottom = PAGE_H - 10
+  let rightY = 0
+  // A long anketa (long places of work) goes on to the next page instead of
+  // being cut off
+  const roomFor = (height) => {
+    if (rightY + height <= bottom) return
+    pdf.addPage()
+    paintPage()
+    rightY = 14
+  }
 
   if (partner) {
-    drawPartnerHeader(pdf, partner, { x: rightX, y: rightY, width: pageWidth - rightPadding - rightX, height: 28 })
+    pdf.setFont(TEXT_FONT, 'normal')
+    drawPartnerHeader(pdf, partner, { x: rightX, y: 6, width: rightEnd - rightX, height: 32 })
   } else {
-    try {
-      // BUY SUN Logo (image) - larger size, centered
-      pdf.addImage(logoAnketa, 'PNG', rightCenter - 35, rightY, 70, 28)
-    } catch (err) {
-      // Fallback to text if image fails
-      pdf.setTextColor(3, 72, 125) // #03487D
-      pdf.setFontSize(29)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('BUY', rightCenter - 28, rightY + 16)
-      pdf.setTextColor(218, 165, 32)
-      pdf.text('SUN', rightCenter + 4, rightY + 16)
+    const logo = pdf.getImageProperties(logoAnketa)
+    const size = fitInBox(logo.width, logo.height, 60.7, 27.9)
+    pdf.addImage(logoAnketa, 'PNG', 147 - size.width / 2, 7.9 + (27.9 - size.height) / 2, size.width, size.height)
+  }
+
+  rightY = 63
+  const position = POSITIONS[f('desiredPosition')] || capitalize(f('desiredPosition'))
+  if (position) {
+    rightY += labelled('POSITION', position, { x: 87.8, y: rightY, right: rightEnd, size: 14, labelSize: 16, color: BLACK }) + 8
+  } else {
+    rightY += 15
+  }
+
+  const rowOptions = { x: rightX, right: rightEnd, labelSize: 13, space: 0.3, color: BLACK }
+  let gap = 4.4 // between rows; less for a long anketa, see below
+  const row = (label, value) => {
+    if (!value) return
+    text(12, BLACK)
+    roomFor(lineH(12) + 1)
+    rightY += labelled(label, value, { ...rowOptions, y: rightY }) + gap
+  }
+  const divider = () => {
+    pdf.setDrawColor(...BLACK)
+    pdf.setLineWidth(0.9)
+    pdf.line(rightX, rightY + 3.2, rightEnd, rightY + 3.2)
+    rightY += 9.5
+  }
+
+  const jobs = [1, 2, 3]
+    .map((n) => ({
+      position: f(`position${n}`),
+      company: f(`company${n}`),
+      period: range(f(`workStart${n}`), f(`workEnd${n}`)),
+      country: f(`country${n}`),
+    }))
+    .filter((j) => j.position || j.company || j.country)
+  const languages = [
+    ['ENGLISH', f('english')],
+    ['TÜRKÇE', f('turkish')],
+    ['RUSSIAN', f('russian')],
+    [f('additionalLanguage').toUpperCase(), f('additionalLanguage') && f('additionalLanguageLevel')],
+  ].filter(([label, v]) => label && v)
+
+  // Three jobs with long places of work: the rows move closer together so the
+  // languages still fit on the first page
+  {
+    const measure = (label, value) => (value ? labelled(label, value, { ...rowOptions, y: 0, dry: true }) : null)
+    const heights = [
+      ...jobs.flatMap((j) => [measure('POSITION', j.position), measure('PLACE OF WORK', j.company), measure('WORK PERIOD', j.period), measure('COUNTRY', j.country)]),
+      ...languages.map(([label, value]) => measure(label, value)),
+    ].filter((h) => h !== null)
+    const fixed = (jobs.length ? 10.5 + jobs.length * 9.5 : 0) + (languages.length ? 18 : 0)
+    const free = bottom - rightY - fixed - heights.reduce((a, b) => a + b, 0)
+    if (heights.length) gap = Math.max(1.2, Math.min(4.4, (free - 8) / heights.length))
+  }
+  if (jobs.length) {
+    roomFor(10.5 + 4 * (lineH(12) + gap))
+    heading('EXPERIENCE', rightCenter, rightY - 0.2)
+    rightY += 10.5
+    for (const job of jobs) {
+      roomFor(4 * (lineH(12) + gap)) // a job is kept together on one page when it fits
+      row('POSITION', job.position)
+      row('PLACE OF WORK', job.company)
+      row('WORK PERIOD', job.period)
+      row('COUNTRY', job.country)
+      divider()
     }
   }
 
-  rightY += 45
-
-  // Helper to add field on the right with label and optional wrapping value
-  const addRightField = (label, value) => {
-    if (!value || String(value).trim() === '') return
-    pdf.setFontSize(17)
-    pdf.setFont(undefined, 'normal')
-    const availableWidth = pageWidth - rightPadding - rightValueX
-    const valueLines = pdf.splitTextToSize(String(value), availableWidth)
-    roomFor(rowHeight(valueLines))
-
-    pdf.setFontSize(15)
-    pdf.setFont(undefined, 'bold')
-    pdf.setTextColor(...black)
-    pdf.text(`${label}: `, rightX, rightY)
-    pdf.setFontSize(17)
-    pdf.setFont(undefined, 'normal')
-    pdf.text(valueLines, rightValueX, rightY)
-    
-    // Update rightY based on number of lines
-    rightY += rowHeight(valueLines)
+  if (languages.length) {
+    roomFor(18 + languages.length * (lineH(12) + gap))
+    rightY += 2
+    heading('LANGUAGES', rightCenter, rightY)
+    rightY += 16
+    for (const [label, value] of languages) row(label, value)
   }
 
-  // Name and position (no label, just value)
-  pdf.setTextColor(...black)
-  pdf.setFontSize(28)
-  pdf.setFont(undefined, 'bold')
-  const name = `${formData.firstName} ${formData.lastName}`
-  const nameLines = pdf.splitTextToSize(name, pageWidth - rightPadding - rightX)
-  pdf.text(nameLines, rightX, rightY)
-  rightY += nameLines.length * 9
-  
-  // Divider line
-  pdf.setDrawColor(...gray)
-  pdf.setLineWidth(0.7) // 2px line
-  pdf.line(rightX, rightY, pageWidth - rightPadding, rightY)
-  rightY += 8
-
-  // Fields with labels
-  addRightField('Position', formData.desiredPosition)
-  addRightField('Years', formData.age)
-  
-  rightY += 5
-
-  // EXPERIENCE section - helper to add experience block only if has data
-  const addExpBlock = (position, company, workStart, workEnd, country) => {
-    // Skip completely if no meaningful data (check for empty strings too)
-    const hasPosition = position && position.trim() !== ''
-    const hasCompany = company && company.trim() !== ''
-    const hasCountry = country && country.trim() !== ''
-    const hasWorkStart = workStart && workStart.trim() !== ''
-    const hasWorkEnd = workEnd && workEnd.trim() !== ''
-    
-    if (!hasPosition && !hasCompany && !hasCountry) return false
-    
-    // A job is kept together on one page when it fits
-    roomFor(4 * 8)
-    addRightField('Position', position)
-    addRightField('Place of work', company)
-    if (hasWorkStart || hasWorkEnd) addRightField('Work period', hasWorkStart && hasWorkEnd ? `${workStart} - ${workEnd}` : (hasWorkStart ? workStart : workEnd))
-    addRightField('Country', country)
-    rightY += 4
-
-    // Divider only if block was rendered
-    pdf.setDrawColor(...gray)
-    pdf.setLineWidth(0.7) // 2px line
-    pdf.line(rightX, rightY, pageWidth - rightPadding, rightY)
-    rightY += 6
-    return true
-  }
-
-  // Check if any experience exists (with proper empty string check)
-  const hasExp1 = (formData.position1 && formData.position1.trim()) || 
-                  (formData.company1 && formData.company1.trim()) || 
-                  (formData.country1 && formData.country1.trim())
-  const hasExp2 = (formData.position2 && formData.position2.trim()) || 
-                  (formData.company2 && formData.company2.trim()) || 
-                  (formData.country2 && formData.country2.trim())
-  const hasExp3 = (formData.position3 && formData.position3.trim()) || 
-                  (formData.company3 && formData.company3.trim()) || 
-                  (formData.country3 && formData.country3.trim())
-  const hasAnyExperience = hasExp1 || hasExp2 || hasExp3
-
-  if (hasAnyExperience) {
-    pdf.setTextColor(...black) // Black color
-    pdf.setFontSize(20) // Increased from 17
-    pdf.setFont(undefined, 'bold')
-    roomFor(14 + 8)
-    pdf.text('EXPERIENCE', rightCenter, rightY, { align: 'center' })
-    rightY += 14
-
-    pdf.setTextColor(...black)
-    pdf.setFontSize(17)
-
-    if (hasExp1) addExpBlock(formData.position1, formData.company1, formData.workStart1, formData.workEnd1, formData.country1)
-    if (hasExp2) addExpBlock(formData.position2, formData.company2, formData.workStart2, formData.workEnd2, formData.country2)
-    if (hasExp3) addExpBlock(formData.position3, formData.company3, formData.workStart3, formData.workEnd3, formData.country3)
-  }
-
-  rightY += 10 // Reduced space between sections
-
-  // LANGUAGES section - only show if any language is filled
-  const hasLanguages = formData.english || formData.turkish || formData.russian || formData.additionalLanguage
-  if (hasLanguages) {
-    pdf.setTextColor(...black) // Black color
-    pdf.setFontSize(20) // Increased from 17
-    pdf.setFont(undefined, 'bold')
-    roomFor(14 + 8)
-    pdf.text('LANGUAGES:', rightCenter, rightY, { align: 'center' })
-    rightY += 14
-
-    pdf.setTextColor(...black)
-    pdf.setFontSize(15) // Increased from 13
-
-    pdf.setFont(undefined, 'bold')
-
-    if (formData.english) {
-      addRightField('English', formData.english)
-    }
-
-    if (formData.turkish) {
-      addRightField('Turkish', formData.turkish)
-    }
-
-    if (formData.russian) {
-      addRightField('Russian', formData.russian)
-    }
-
-    if (formData.additionalLanguage) {
-      const langLabel = formData.additionalLanguage.charAt(0).toUpperCase() + formData.additionalLanguage.slice(1)
-      addRightField(langLabel, formData.additionalLanguageLevel || '')
-    }
-    rightY += 4 // Reduced space after sections
-  }
-
-  // HOBBY AND INTERESTS section - combined courses and hobbies
-  const hasHobbyInterests = (formData.courses && formData.courses.trim()) || 
-                            (formData.hobbies && formData.hobbies.trim())
-  if (hasHobbyInterests) {
-    pdf.setTextColor(...black) // Black color
-    pdf.setFontSize(20) // Increased from 17
-    pdf.setFont(undefined, 'bold')
-    roomFor(14 + 8)
-    pdf.text('HOBBY AND INTERESTS', rightCenter, rightY, { align: 'center' })
-    rightY += 14
-
-    pdf.setTextColor(...black)
-    pdf.setFontSize(17) // Increased from 14
-    pdf.setFont(undefined, 'normal')
-    
-    // Display courses and hobbies on separate lines
-    if (formData.courses && formData.courses.trim()) {
-      const coursesLines = pdf.splitTextToSize(formData.courses.trim(), rightColWidth - rightPadding * 2)
-      roomFor(coursesLines.length * WRAP_LINE * 1.3)
-      pdf.text(coursesLines, rightX, rightY, { lineHeightFactor: 1.5 })
-      rightY += coursesLines.length * 6 * 1.5 + 2 // Small space after courses
-    }
-    
-    if (formData.hobbies && formData.hobbies.trim()) {
-      const hobbiesLines = pdf.splitTextToSize(formData.hobbies.trim(), rightColWidth - rightPadding * 2)
-      roomFor(hobbiesLines.length * WRAP_LINE * 1.3)
-      pdf.text(hobbiesLines, rightX, rightY, { lineHeightFactor: 1.5 })
-    }
-  }
-
-  // ========== PHOTO PAGES ==========
-  // Only full-body photo and additional photo on photo pages (not selfie)
+  // ========== PHOTO PAGE ==========
+  // The full-body and the additional photo (the selfie is on the first page)
   const photos = [formData.fullBodyPhoto, formData.additionalPhoto1].filter(Boolean)
-
   if (photos.length > 0) {
     pdf.addPage()
-    const pageMargin = 5 // Small margin for spacing
-    const slotWidth = pageWidth - pageMargin * 2
-    const slotHeight = (pageHeight - pageMargin * 2) / photos.length
-
+    const pageMargin = 5
+    const slotWidth = PAGE_W - pageMargin * 2
+    const slotHeight = (PAGE_H - pageMargin * 2) / photos.length
     // The whole photo fits in its slot, so a head or feet are never cut off
     photos.forEach((photo, i) => {
       const { width, height } = fitInBox(photo.width, photo.height, slotWidth, slotHeight)
-      const photoX = (pageWidth - width) / 2
-      const photoY = pageMargin + i * slotHeight + (slotHeight - height) / 2
-      pdf.addImage(photo.dataUrl, 'JPEG', photoX, photoY, width, height)
+      pdf.addImage(photo.dataUrl, 'JPEG', (PAGE_W - width) / 2, pageMargin + i * slotHeight + (slotHeight - height) / 2, width, height)
     })
   }
 
