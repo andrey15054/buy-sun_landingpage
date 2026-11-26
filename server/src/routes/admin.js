@@ -7,7 +7,7 @@ const { anketaEditSchema, partnerTemplateSchema } = require('../utils/validation
 const { downloadName, contentDisposition } = require('../utils/download')
 
 const COOKIE = 'bs_admin'
-const PENDING_MS = 10 * 60 * 1000 // password checked, waiting for the phone code
+const PENDING_MS = 10 * 60 * 1000 // first login: only time to set a new password
 const SESSION_MS = 12 * 60 * 60 * 1000 // a working day
 const IDLE_MS = 2 * 60 * 60 * 1000 // logged out after 2 hours without activity
 const MAX_ATTEMPTS = 5
@@ -27,8 +27,7 @@ function readCookie(req, name) {
 // What the manager has to do before getting into the cabinet
 function nextStep(user, session) {
   if (user.must_change_password) return 'password'
-  if (!user.totp_enabled) return 'setup-2fa'
-  if (!session.verified) return 'code'
+  if (!session.verified) return 'login'
   return null
 }
 
@@ -75,7 +74,7 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
 
   // An attempt is counted before it is checked, in one statement, so guesses
   // sent in parallel cannot all start from the same count: one past the limit
-  // is refused without checking the password or code
+  // is refused without checking the password
   async function takeAttempt(user) {
     const { failed_attempts: attempts } = await prisma.user.update({
       where: { id: user.id },
@@ -142,14 +141,21 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
         await registerFailure(user, attempts, 'password', req)
         throw fail(401, 'Неверный email или пароль')
       }
-      // The right password does not count; the counter is reset by the right code
-      await prisma.user.update({ where: { id: user.id }, data: { failed_attempts: { decrement: 1 } } })
+      // The right password: the counter starts again. On the first login the
+      // session only allows setting a new password; otherwise it is the full one.
+      const updated = await prisma.user.update({
+        where: { id: user.id },
+        data: { failed_attempts: 0, locked_until: null, last_login_at: new Date() },
+      })
+      const full = !user.must_change_password
+      const lifetime = full ? SESSION_MS : PENDING_MS
       const token = auth.newToken()
       const session = await prisma.session.create({
-        data: { token_hash: auth.hashToken(token), user_id: user.id, expires_at: new Date(Date.now() + PENDING_MS) },
+        data: { token_hash: auth.hashToken(token), user_id: user.id, verified: full, expires_at: new Date(Date.now() + lifetime) },
       })
-      setCookie(res, token, PENDING_MS)
-      res.json(me(user, session))
+      setCookie(res, token, lifetime)
+      logger.info(full ? 'Cabinet login' : 'Cabinet first login: new password needed', { userId: user.id })
+      res.json(me(updated, session))
     } catch (err) { next(err) }
   })
 
@@ -167,49 +173,19 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
       })
       // Other devices are logged out after a password change
       await prisma.session.deleteMany({ where: { user_id: user.id, id: { not: req.session.id } } })
+      let session = req.session
+      if (!session.verified) {
+        // First login done: a new cookie value for the full session, so a value
+        // seen before is useless
+        const token = auth.newToken()
+        session = await prisma.session.update({
+          where: { id: session.id },
+          data: { token_hash: auth.hashToken(token), verified: true, expires_at: new Date(Date.now() + SESSION_MS), last_seen_at: new Date() },
+        })
+        setCookie(res, token, SESSION_MS)
+      }
       logger.info('Cabinet password changed', { userId: user.id })
-      res.json(me(user, req.session))
-    } catch (err) { next(err) }
-  })
-
-  router.post('/2fa/setup', loadSession, async (req, res, next) => {
-    try {
-      if (req.user.must_change_password || req.user.totp_enabled) throw fail(400, 'Код с телефона уже подключён')
-      const secret = auth.newTotpSecret()
-      await prisma.user.update({ where: { id: req.user.id }, data: { totp_secret: secret } })
-      res.json(await auth.totpSetupData(secret, req.user.email))
-    } catch (err) { next(err) }
-  })
-
-  // Confirms the phone app on first setup, or checks the code on every login
-  router.post(['/2fa/confirm', '/code'], attemptLimiter, json, loadSession, async (req, res, next) => {
-    try {
-      const { code } = z.object({ code: z.string().max(20) }).parse(req.body)
-      const user = req.user
-      const setup = req.path === '/2fa/confirm'
-      if (user.must_change_password || !user.totp_secret || (setup ? user.totp_enabled : !user.totp_enabled)) {
-        throw fail(400, 'Сначала выполните предыдущий шаг')
-      }
-      if (isLocked(user)) throw fail(423, LOCKED)
-      const attempts = await takeAttempt(user)
-      const step = auth.checkTotp(user.totp_secret, user.email, code, user.totp_last_step)
-      if (step === null) {
-        await registerFailure(user, attempts, 'code', req)
-        throw fail(401, 'Неверный код. Введите новый код из приложения.')
-      }
-      const updated = await prisma.user.update({
-        where: { id: user.id },
-        data: { totp_enabled: true, totp_last_step: step, failed_attempts: 0, locked_until: null, last_login_at: new Date() },
-      })
-      // A new cookie value after login, so a value seen before login is useless
-      const token = auth.newToken()
-      const session = await prisma.session.update({
-        where: { id: req.session.id },
-        data: { token_hash: auth.hashToken(token), verified: true, expires_at: new Date(Date.now() + SESSION_MS), last_seen_at: new Date() },
-      })
-      setCookie(res, token, SESSION_MS)
-      logger.info('Cabinet login', { userId: user.id })
-      res.json(me(updated, session))
+      res.json(me(user, session))
     } catch (err) { next(err) }
   })
 

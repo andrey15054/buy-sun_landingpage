@@ -98,8 +98,8 @@ sudo -u buysun /opt/buysun/current/deploy/manager.sh add anna@buysun.kz "Анн�
 ```
 
 It prints a temporary password; send it to the manager privately. On the
-first login the cabinet asks for a new password and to connect Google
-Authenticator or Яндекс Ключ. Lost phone: `manager.sh reset <email>`.
+first login the cabinet asks for a new password. Forgotten password:
+`manager.sh reset <email>`.
 Someone left: `manager.sh disable <email>`. Everyone: `manager.sh list`.
 
 **File for a partner.** On every anketa page, section “Файл для партнёра”: the

@@ -42,15 +42,16 @@ httpOnly cookie, every change needs the `X-Requested-With: buysun-admin` header:
 
 | Request | What |
 |---|---|
-| `POST /login`, `/password`, `/2fa/setup`, `/2fa/confirm`, `/code`, `/logout`, `GET /me` | Logging in: password, new password on first login, phone app (TOTP) once, then the code every time |
+| `POST /login`, `/password`, `/logout`, `GET /me` | Logging in: email and password; on the first login a new password instead of the temporary one |
 | `GET /leads?q=&type=&page=` | List and search by name, phone, email or number |
 | `GET /leads/:id`, `GET /leads/:id/files/:fileId` | One lead with files, Bitrix24 link and change history; a stored file |
 | `PUT /leads/:id` | Save an edited anketa: answers, the new PDF (built in the browser), replaced photos |
 | `POST /leads/:id/share-link` | A new anketa link; the old one stops opening |
 | `GET /google`, `GET /google/connect`, `GET /google/callback`, `DELETE /google` | Google Drive: status, off to Google's consent page, back from it (tied by a one-time state, no cookie), disconnect |
 
-Security of the cabinet: the code from the phone is required for everyone and
-cannot be reused; 5 wrong passwords or codes lock the account for 15 minutes;
+Security of the cabinet: email and password (the code from a phone app was
+removed on 2026-11-26 at the owner's request: it could not be set up); passwords
+of at least 10 characters; 5 wrong passwords lock the account for 15 minutes;
 sessions end after 2 idle hours or 12 hours; passwords are scrypt hashes;
 every edit is recorded with who and what. Anketa files are only given to a
 logged-in manager, except the anketa PDF behind its link: whoever has the
@@ -70,8 +71,7 @@ node scripts/manager.js disable anna@buysun.kz         # left the company
 node scripts/manager.js list
 ```
 
-On the first login the cabinet asks for a new password and to connect
-Google Authenticator or Яндекс Ключ. On the server use
+On the first login the cabinet asks for a new password. On the server use
 `sudo -u buysun /opt/buysun/current/deploy/manager.sh` with the same arguments.
 
 ## Settings (.env)

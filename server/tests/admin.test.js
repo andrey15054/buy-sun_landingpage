@@ -3,25 +3,21 @@ const assert = require('node:assert/strict')
 const fs = require('fs')
 const path = require('path')
 const { startTestApp, anketaPayload, dataUrl, JPEG, PDF } = require('./helpers')
-const { hashPassword, totpFor } = require('../src/services/auth')
+const { hashPassword } = require('../src/services/auth')
 
 const TEMP = 'temporary-pass-1'
 const NEW = 'my-new-password-2026'
-const code = (secret, email, offsetSteps = 0) => totpFor(secret, email).generate({ timestamp: Date.now() + offsetSteps * 30000 })
 
 async function addManager(t, email, extra = {}) {
   return t.prisma.user.create({ data: { email, name: 'Анна', password_hash: await hashPassword(TEMP), ...extra } })
 }
 
-// Logs a new manager in through every first-time step; returns the client and secret
+// Logs a new manager in: temporary password, then their own; returns the client
 async function firstLogin(t, email) {
   const c = t.cabinet()
   assert.equal((await c.call('POST', '/api/admin/login', { email, password: TEMP })).body.next, 'password')
-  assert.equal((await c.call('POST', '/api/admin/password', { password: NEW })).body.next, 'setup-2fa')
-  const setup = await c.call('POST', '/api/admin/2fa/setup')
-  const done = await c.call('POST', '/api/admin/2fa/confirm', { code: code(setup.body.secret, email) })
-  assert.equal(done.body.next, null)
-  return { c, secret: setup.body.secret }
+  assert.equal((await c.call('POST', '/api/admin/password', { password: NEW })).body.next, null)
+  return { c }
 }
 
 describe('cabinet login', () => {
@@ -29,7 +25,7 @@ describe('cabinet login', () => {
   before(async () => { t = await startTestApp() })
   after(async () => { await t.close() })
 
-  it('walks a new manager through password change and phone code setup', async () => {
+  it('walks a new manager from the temporary password to their own', async () => {
     await addManager(t, 'anna@buysun.test')
     const c = t.cabinet()
     const login = await c.call('POST', '/api/admin/login', { email: 'ANNA@buysun.test ', password: TEMP })
@@ -38,30 +34,30 @@ describe('cabinet login', () => {
     assert.match(login.headers.get('set-cookie'), /HttpOnly/i)
     assert.match(login.headers.get('set-cookie'), /SameSite=Strict/i)
 
-    assert.equal((await c.call('GET', '/api/admin/leads')).status, 401, 'no data before the code')
+    assert.equal((await c.call('GET', '/api/admin/leads')).status, 401, 'no data with the temporary password')
     assert.equal((await c.call('POST', '/api/admin/password', { password: 'short' })).status, 400)
-    assert.equal((await c.call('POST', '/api/admin/password', { password: NEW })).body.next, 'setup-2fa')
-
-    const setup = await c.call('POST', '/api/admin/2fa/setup')
-    assert.match(setup.body.qr, /^data:image\/png;base64,/)
-    assert.match(setup.body.uri, /^otpauth:\/\/totp\/BUY%20SUN:anna%40buysun\.test\?/)
-    assert.equal((await c.call('POST', '/api/admin/2fa/confirm', { code: '000000' })).status, 401)
-
     const before = c.cookie
-    const ok = await c.call('POST', '/api/admin/2fa/confirm', { code: code(setup.body.secret, 'anna@buysun.test') })
-    assert.equal(ok.body.next, null)
-    assert.notEqual(c.cookie, before, 'a new session value after login')
-    assert.equal((await c.call('GET', '/api/admin/leads')).status, 200)
-    assert.equal(ok.headers.get('cache-control'), 'no-store')
+    const done = await c.call('POST', '/api/admin/password', { password: NEW })
+    assert.equal(done.body.next, null)
+    assert.notEqual(c.cookie, before, 'a new session value after the first login')
+    const leads = await c.call('GET', '/api/admin/leads')
+    assert.equal(leads.status, 200)
+    assert.equal(leads.headers.get('cache-control'), 'no-store')
+    // The old phone-code steps are gone
+    assert.equal((await c.call('POST', '/api/admin/2fa/setup')).status, 404)
   })
 
-  it('asks for the code on the next login and refuses a code used before', async () => {
-    const { secret } = await firstLogin(t, (await addManager(t, 'boris@buysun.test')).email)
-    const used = code(secret, 'boris@buysun.test')
+  it('lets a manager in with the password alone on the next login', async () => {
+    await firstLogin(t, (await addManager(t, 'boris@buysun.test')).email)
     const c = t.cabinet()
-    assert.equal((await c.call('POST', '/api/admin/login', { email: 'boris@buysun.test', password: NEW })).body.next, 'code')
-    assert.equal((await c.call('POST', '/api/admin/code', { code: used })).status, 401, 'same code twice')
-    assert.equal((await c.call('POST', '/api/admin/code', { code: code(secret, 'boris@buysun.test', 1) })).body.next, null)
+    assert.equal((await c.call('POST', '/api/admin/login', { email: 'boris@buysun.test', password: TEMP })).status, 401, 'the temporary password no longer works')
+    const login = await c.call('POST', '/api/admin/login', { email: 'boris@buysun.test', password: NEW })
+    assert.equal(login.body.next, null)
+    assert.equal((await c.call('GET', '/api/admin/leads')).status, 200)
+    // A manager stuck on the old phone step gets in too
+    await addManager(t, 'stuck@buysun.test', { password_hash: await hashPassword(NEW), must_change_password: false, totp_secret: 'ABC', totp_enabled: false })
+    const stuck = t.cabinet()
+    assert.equal((await stuck.call('POST', '/api/admin/login', { email: 'stuck@buysun.test', password: NEW })).body.next, null)
   })
 
   it('locks the account for 15 minutes after 5 wrong passwords', async () => {
@@ -110,7 +106,6 @@ describe('cabinet login', () => {
     await t.prisma.session.updateMany({ where: { user_id: user.id }, data: { last_seen_at: new Date(Date.now() - 3 * 3600 * 1000) } })
     assert.equal((await c.call('GET', '/api/admin/leads')).status, 401)
 
-    await t.prisma.user.update({ where: { id: user.id }, data: { totp_last_step: null } })
     const second = await firstLoginAgain(t, user.email)
     await second.call('POST', '/api/admin/logout')
     assert.equal((await second.call('GET', '/api/admin/leads')).status, 401)
@@ -122,12 +117,8 @@ describe('cabinet login', () => {
 })
 
 async function firstLoginAgain(t, email) {
-  const user = await t.prisma.user.findUnique({ where: { email } })
   const c = t.cabinet()
-  await c.call('POST', '/api/admin/login', { email, password: NEW })
-  const step = Math.floor(Date.now() / 30000)
-  const offset = user.totp_last_step != null && user.totp_last_step >= step ? user.totp_last_step - step + 1 : 0
-  assert.equal((await c.call('POST', '/api/admin/code', { code: code(user.totp_secret, email, offset) })).body.next, null)
+  assert.equal((await c.call('POST', '/api/admin/login', { email, password: NEW })).body.next, null)
   return c
 }
 
