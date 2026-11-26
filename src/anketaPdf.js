@@ -130,7 +130,9 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   const title = (size, color, space = 0) => {
     pdf.setFont(TITLE_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(space)
   }
-  const text = (size, color) => { pdf.setFont(TEXT_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(0) }
+  // Values in the same bold font as the labels: Ahmed asked for one font on
+  // the whole anketa, a thin font after a bold label was hard to read
+  const text = (size, color) => { pdf.setFont(TITLE_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(0) }
   // jsPDF leaves the letter spacing out of the width
   const titleWidth = (str) => pdf.getTextWidth(str) + pdf.getCharSpace() * str.length
   const lineH = (size) => size * PT * 1.2
@@ -151,7 +153,8 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     text(size, color)
     const v = String(value)
     if (!below && pdf.getTextWidth(v) <= right - labelEnd) {
-      if (!dry) pdf.text(v, labelEnd, y, { baseline: 'top' })
+      // On the label's line: both letters stand on one baseline
+      if (!dry) pdf.text(v, labelEnd, y + (labelSize - size) * PT * 0.75, { baseline: 'top' })
       return lineH(size)
     }
     const lines = pdf.splitTextToSize(v, right - x)

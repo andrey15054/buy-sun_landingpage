@@ -367,27 +367,42 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
     } catch (err) { next(err) }
   })
 
-  // ---- the partner template ----
+  // ---- partner templates ----
 
-  router.get('/template', loadSession, requireFull, async (req, res, next) => {
+  const templateId = (req) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) throw Object.assign(new Error('Шаблон не найден'), { status: 404, expose: true })
+    return id
+  }
+
+  router.get('/templates', loadSession, requireFull, async (req, res, next) => {
     try {
-      res.json({ template: await templates.get() })
+      res.json({ items: await templates.list() })
     } catch (err) { next(err) }
   })
 
-  router.put('/template', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
+  router.post('/templates', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
     try {
-      const template = await templates.save(partnerTemplateSchema.parse(req.body), req.user)
-      logger.info('Partner template saved', { userId: req.user.id })
+      const template = await templates.create(partnerTemplateSchema.parse(req.body), req.user)
+      logger.info('Partner template added', { userId: req.user.id, templateId: template.id })
+      res.status(201).json({ template })
+    } catch (err) { next(err) }
+  })
+
+  router.put('/templates/:id', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
+    try {
+      const template = await templates.update(templateId(req), partnerTemplateSchema.parse(req.body), req.user)
+      logger.info('Partner template saved', { userId: req.user.id, templateId: template.id })
       res.json({ template })
     } catch (err) { next(err) }
   })
 
-  router.delete('/template', loadSession, requireFull, async (req, res, next) => {
+  router.delete('/templates/:id', loadSession, requireFull, async (req, res, next) => {
     try {
-      await templates.remove()
-      logger.info('Partner template removed', { userId: req.user.id })
-      res.json({ template: null })
+      const id = templateId(req)
+      await templates.remove(id)
+      logger.info('Partner template removed', { userId: req.user.id, templateId: id })
+      res.json({ ok: true })
     } catch (err) { next(err) }
   })
 

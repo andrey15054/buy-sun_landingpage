@@ -752,18 +752,19 @@ function ResumeModal({ isOpen, onClose }) {
                 </section>
 
                 <section className="form-section">
-                  <h3 className="section-title">Опыт работы (необязательно)</h3>
-                  
+                  <h3 className="section-title">Опыт работы</h3>
+                  <p className="form-hint">Укажите минимум 2 места работы, лучше 3. Подойдут подработка, практика, сезонная работа, волонтёрство.</p>
+
                   <div className="work-experience-block">
-                    <h4>Опыт работы</h4>
+                    <h4>Первое место (обязательно)</h4>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>
-                        <input type="text" name="company1" maxLength={maxLength('company1')} value={formData.company1} onChange={handleChange} placeholder="Введите название компании" />
+                        <input type="text" name="company1" maxLength={maxLength('company1')} value={formData.company1} onChange={handleChange} placeholder="Введите название компании" required />
                       </div>
                       <div className="form-group">
                         <label>Страна компании</label>
-                        <select name="country1" value={formData.country1} onChange={handleChange}>
+                        <select name="country1" value={formData.country1} onChange={handleChange} required>
                           <option value="">---</option>
                           <option value="Kazakhstan">Казахстан</option>
                           <option value="Turkey">Турция</option>
@@ -775,31 +776,31 @@ function ResumeModal({ isOpen, onClose }) {
                     <div className="form-row">
                       <div className="form-group">
                         <label>Должность (на англ.)</label>
-                        <input type="text" name="position1" maxLength={maxLength('position1')} value={formData.position1} onChange={handleChange} placeholder="Введите должность" />
+                        <input type="text" name="position1" maxLength={maxLength('position1')} value={formData.position1} onChange={handleChange} placeholder="Введите должность" required />
                       </div>
                       <div className="form-row-inline">
                         <div className="form-group">
                           <label>Начало работы (только год)</label>
-                          <input type="number" name="workStart1" value={formData.workStart1} onChange={handleChange} min="1950" max="2026" />
+                          <input type="number" name="workStart1" value={formData.workStart1} onChange={handleChange} min="1950" max="2026" required />
                         </div>
                         <div className="form-group">
                           <label>Окончание работы (только год)</label>
-                          <input type="number" name="workEnd1" value={formData.workEnd1} onChange={handleChange} min="1950" max="2026" />
+                          <input type="number" name="workEnd1" value={formData.workEnd1} onChange={handleChange} min="1950" max="2026" required />
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="work-experience-block">
-                    <h4>Опыт работы (Второе место)</h4>
+                    <h4>Второе место (обязательно)</h4>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>
-                        <input type="text" name="company2" maxLength={maxLength('company2')} value={formData.company2} onChange={handleChange} />
+                        <input type="text" name="company2" maxLength={maxLength('company2')} value={formData.company2} onChange={handleChange} required />
                       </div>
                       <div className="form-group">
                         <label>Страна компании</label>
-                        <select name="country2" value={formData.country2} onChange={handleChange}>
+                        <select name="country2" value={formData.country2} onChange={handleChange} required>
                           <option value="">---</option>
                           <option value="Kazakhstan">Казахстан</option>
                           <option value="Turkey">Турция</option>
@@ -811,23 +812,23 @@ function ResumeModal({ isOpen, onClose }) {
                     <div className="form-row">
                       <div className="form-group">
                         <label>Должность (на англ.)</label>
-                        <input type="text" name="position2" maxLength={maxLength('position2')} value={formData.position2} onChange={handleChange} />
+                        <input type="text" name="position2" maxLength={maxLength('position2')} value={formData.position2} onChange={handleChange} required />
                       </div>
                       <div className="form-row-inline">
                         <div className="form-group">
                           <label>Начало работы (только год)</label>
-                          <input type="number" name="workStart2" value={formData.workStart2} onChange={handleChange} min="1950" max="2026" />
+                          <input type="number" name="workStart2" value={formData.workStart2} onChange={handleChange} min="1950" max="2026" required />
                         </div>
                         <div className="form-group">
                           <label>Окончание работы (только год)</label>
-                          <input type="number" name="workEnd2" value={formData.workEnd2} onChange={handleChange} min="1950" max="2026" />
+                          <input type="number" name="workEnd2" value={formData.workEnd2} onChange={handleChange} min="1950" max="2026" required />
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="work-experience-block">
-                    <h4>Опыт работы (Третье место)</h4>
+                    <h4>Третье место (желательно)</h4>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Название компании (на англ.)</label>

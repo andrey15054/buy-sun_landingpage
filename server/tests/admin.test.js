@@ -311,44 +311,52 @@ describe('partner template', () => {
   after(async () => { await t.close() })
 
   it('is only for managers who are logged in', async () => {
-    assert.equal((await t.cabinet().call('GET', '/api/admin/template')).status, 401)
-    assert.equal((await t.cabinet().call('PUT', '/api/admin/template', { name: 'X', header: 'X', contacts: '' })).status, 401)
+    assert.equal((await t.cabinet().call('GET', '/api/admin/templates')).status, 401)
+    assert.equal((await t.cabinet().call('POST', '/api/admin/templates', { name: 'X', header: 'X', contacts: '' })).status, 401)
   })
 
-  it('keeps one template, shared by all managers, with who saved it', async () => {
-    assert.equal((await c.call('GET', '/api/admin/template')).body.template, null)
-    const first = await c.call('PUT', '/api/admin/template', {
-      name: 'Antalya Staff', header: 'Antalya Staff Agency', contacts: '+90 532 000 00 00\ninfo@antalya-staff.com', logo: dataUrl('image/png', PNG),
+  it('keeps a template per partner, shared by all managers, with who saved it', async () => {
+    assert.deepEqual((await c.call('GET', '/api/admin/templates')).body.items, [])
+    const tayga = await c.call('POST', '/api/admin/templates', {
+      name: 'TAYGA GRUP', header: 'TAYGA GRUP', contacts: '+90 532 000 00 00\ninfo@tayga.test', logo: dataUrl('image/png', PNG),
     })
-    assert.equal(first.status, 200)
-    assert.equal(first.body.template.updated_by, 'Анна')
-    assert.equal(first.body.template.logo, dataUrl('image/png', PNG))
+    assert.equal(tayga.status, 201)
+    assert.equal(tayga.body.template.updated_by, 'Анна')
+    assert.equal(tayga.body.template.logo, dataUrl('image/png', PNG))
 
-    // Saving again replaces it; a missing logo keeps the saved one
-    const second = await c.call('PUT', '/api/admin/template', { name: 'Side Hotels', header: 'Side Hotels', contacts: '' })
-    assert.equal(second.body.template.name, 'Side Hotels')
-    assert.equal(second.body.template.logo, dataUrl('image/png', PNG))
-    assert.equal(await t.prisma.partnerTemplate.count(), 1)
+    // A second partner does not replace the first one; one name only once
+    const patika = await c.call('POST', '/api/admin/templates', { name: 'PATIKA', header: '', contacts: '', logo: dataUrl('image/png', PNG) })
+    assert.equal(patika.status, 201)
+    assert.equal((await c.call('POST', '/api/admin/templates', { name: 'patika', header: 'P', contacts: '' })).status, 409)
+    const id = tayga.body.template.id
 
     await addManager(t, 'boris@buysun.test')
     const boris = (await firstLogin(t, 'boris@buysun.test')).c
-    assert.equal((await boris.call('GET', '/api/admin/template')).body.template.name, 'Side Hotels')
+    assert.deepEqual((await boris.call('GET', '/api/admin/templates')).body.items.map((x) => x.name), ['PATIKA', 'TAYGA GRUP'])
 
-    // null removes the logo; the template cannot end up empty
-    const noLogo = await c.call('PUT', '/api/admin/template', { name: 'Side Hotels', header: 'Side Hotels', contacts: '', logo: null })
+    // Saving changes only that template; a missing logo keeps the saved one
+    const renamed = await c.call('PUT', `/api/admin/templates/${id}`, { name: 'TAYGA', header: 'TAYGA GRUP', contacts: '' })
+    assert.equal(renamed.status, 200)
+    assert.equal(renamed.body.template.logo, dataUrl('image/png', PNG))
+    assert.equal((await c.call('PUT', `/api/admin/templates/${id}`, { name: 'PATIKA', header: 'X', contacts: '' })).status, 409)
+
+    // null removes the logo; a template cannot end up empty
+    const noLogo = await c.call('PUT', `/api/admin/templates/${id}`, { name: 'TAYGA', header: 'TAYGA GRUP', contacts: '', logo: null })
     assert.equal(noLogo.body.template.logo, null)
-    assert.equal((await c.call('PUT', '/api/admin/template', { name: 'Side Hotels', header: '', contacts: '' })).status, 400)
+    assert.equal((await c.call('PUT', `/api/admin/templates/${id}`, { name: 'TAYGA', header: '', contacts: '' })).status, 400)
 
-    assert.equal((await c.call('DELETE', '/api/admin/template')).status, 200)
-    assert.equal((await c.call('GET', '/api/admin/template')).body.template, null)
+    assert.equal((await c.call('DELETE', `/api/admin/templates/${id}`)).status, 200)
+    assert.equal((await c.call('DELETE', `/api/admin/templates/${id}`)).status, 404)
+    assert.equal((await c.call('PUT', '/api/admin/templates/abc', { name: 'X', header: 'X', contacts: '' })).status, 404)
+    assert.deepEqual((await c.call('GET', '/api/admin/templates')).body.items.map((x) => x.name), ['PATIKA'])
   })
 
   it('refuses a logo that is not a PNG, too many lines and an empty name', async () => {
     const base = { name: 'P', header: 'P', contacts: '' }
-    assert.equal((await c.call('PUT', '/api/admin/template', { ...base, logo: dataUrl('image/png', JPEG) })).status, 400)
-    assert.equal((await c.call('PUT', '/api/admin/template', { ...base, logo: dataUrl('image/jpeg', JPEG) })).status, 400)
-    assert.equal((await c.call('PUT', '/api/admin/template', { ...base, contacts: 'a\nb\nc\nd' })).status, 400)
-    assert.equal((await c.call('PUT', '/api/admin/template', { ...base, name: ' ' })).status, 400)
-    assert.equal((await c.call('PUT', '/api/admin/template', base, { header: false })).status, 403, 'not without the cabinet header')
+    assert.equal((await c.call('POST', '/api/admin/templates', { ...base, logo: dataUrl('image/png', JPEG) })).status, 400)
+    assert.equal((await c.call('POST', '/api/admin/templates', { ...base, logo: dataUrl('image/jpeg', JPEG) })).status, 400)
+    assert.equal((await c.call('POST', '/api/admin/templates', { ...base, contacts: 'a\nb\nc\nd' })).status, 400)
+    assert.equal((await c.call('POST', '/api/admin/templates', { ...base, name: ' ' })).status, 400)
+    assert.equal((await c.call('POST', '/api/admin/templates', base, { header: false })).status, 403, 'not without the cabinet header')
   })
 })

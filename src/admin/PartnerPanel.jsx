@@ -70,10 +70,24 @@ async function logoFromFile(file) {
   }
 }
 
+// The partner chosen last, so the next anketa opens with it
+const LAST_KEY = 'buysun-partner'
+const remember = (id) => {
+  try {
+    if (id) localStorage.setItem(LAST_KEY, String(id))
+    else localStorage.removeItem(LAST_KEY)
+  } catch { /* private mode: nothing to remember */ }
+}
+const remembered = () => {
+  try { return Number(localStorage.getItem(LAST_KEY)) || null } catch { return null }
+}
+
 // The file for a partner: their logo, header and contacts instead of BUY SUN,
-// without the BUY SUN manager's name. One template is kept for everyone.
+// without the BUY SUN manager's name. A template is kept per partner, shared
+// by all managers.
 function PartnerPanel({ build, waiting, dirty, onError }) {
-  const [saved, setSaved] = useState(undefined) // undefined: loading, null: none yet
+  const [items, setItems] = useState(undefined) // undefined: loading
+  const [saved, setSaved] = useState(null) // the chosen template; null: a new partner
   const [draft, setDraft] = useState(EMPTY)
   const [logoChanged, setLogoChanged] = useState(false)
   const [working, setWorking] = useState('')
@@ -83,11 +97,24 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
     setSaved(template)
     setDraft(template ? { ...template, logo: template.logo ? await withSize(template.logo) : null } : EMPTY)
     setLogoChanged(false)
+    remember(template?.id)
   }
 
   useEffect(() => {
-    api('GET', '/template').then(({ template }) => applyTemplate(template)).catch((err) => { onError(err); setSaved(null) })
+    api('GET', '/templates')
+      .then(({ items: list }) => {
+        setItems(list)
+        return applyTemplate(list.find((x) => x.id === remembered()) || list[0] || null)
+      })
+      .catch((err) => { onError(err); setItems([]) })
   }, [onError])
+
+  const choose = (e) => {
+    const next = items.find((x) => x.id === Number(e.target.value)) || null
+    if (changed && !window.confirm('Изменения в шаблоне не сохранены. Перейти к другому партнёру без них?')) return
+    applyTemplate(next)
+    setStatus(null)
+  }
 
   const changed = saved
     ? draft.name !== saved.name || draft.header !== saved.header || draft.contacts !== saved.contacts || logoChanged
@@ -154,14 +181,16 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
 
   const save = async () => {
     if (!draft.name.trim()) return setStatus({ ok: false, text: 'Укажите название партнёра, чтобы сохранить шаблон.' })
-    if (saved && saved.name !== draft.name.trim()
-      && !window.confirm(`Сохраняется один шаблон. Заменить «${saved.name}» на «${draft.name.trim()}»?`)) return
     setWorking('save')
     setStatus(null)
     try {
       const body = { name: draft.name, header: draft.header, contacts: draft.contacts }
-      if (logoChanged) body.logo = draft.logo ? draft.logo.dataUrl : null
-      const { template } = await api('PUT', '/template', body)
+      if (logoChanged || !saved) body.logo = draft.logo ? draft.logo.dataUrl : null
+      const { template } = saved
+        ? await api('PUT', `/templates/${saved.id}`, body)
+        : await api('POST', '/templates', body)
+      setItems((list) => [...list.filter((x) => x.id !== template.id), template]
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru')))
       await applyTemplate(template)
       setStatus({ ok: true, text: 'Шаблон сохранён' })
     } catch (err) {
@@ -175,8 +204,10 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
   const remove = async () => {
     if (!window.confirm(`Удалить шаблон «${saved.name}»?`)) return
     try {
-      await api('DELETE', '/template')
-      await applyTemplate(null)
+      await api('DELETE', `/templates/${saved.id}`)
+      const rest = items.filter((x) => x.id !== saved.id)
+      setItems(rest)
+      await applyTemplate(rest[0] || null)
       setStatus({ ok: true, text: 'Шаблон удалён' })
     } catch (err) {
       onError(err)
@@ -194,8 +225,17 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
 
       <div className="cab-partner-grid">
         <div>
+          {items?.length > 0 && (
+            <label className="cab-field">
+              <span>Шаблон</span>
+              <select value={saved?.id ?? ''} onChange={choose} disabled={Boolean(working)}>
+                {items.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                <option value="">+ Новый партнёр</option>
+              </select>
+            </label>
+          )}
           <label className="cab-field">
-            <span>Партнёр (в файл не попадает)</span>
+            <span>Название партнёра (в файл не попадает)</span>
             <input value={draft.name} onChange={set('name')} maxLength={80} placeholder="Например, Antalya Staff" />
           </label>
           <div className="cab-field">
@@ -238,13 +278,13 @@ function PartnerPanel({ build, waiting, dirty, onError }) {
           {working === 'pdf' ? 'Создаём PDF…' : 'Скачать PDF для партнёра'}
         </button>
         <button type="button" className="cab-btn secondary" onClick={save} disabled={!changed || Boolean(working)}>
-          {working === 'save' ? 'Сохраняем…' : 'Сохранить шаблон'}
+          {working === 'save' ? 'Сохраняем…' : saved ? 'Сохранить шаблон' : 'Сохранить как новый шаблон'}
         </button>
         <span className="cab-partner-status" role="status">
           {status ? <span className={status.ok ? 'cab-ok' : 'cab-error'}>{status.text}</span>
-            : saved === undefined ? 'Загружаем шаблон…'
-            : saved ? <>Сохранён шаблон «{saved.name}»{saved.updated_by && `, ${saved.updated_by}`}, {formatDate(saved.updated_at)}{changed && ' · есть несохранённые изменения'}</>
-            : 'Шаблон пока не сохранён'}
+            : items === undefined ? 'Загружаем шаблоны…'
+            : saved ? <>Шаблон «{saved.name}» сохранён{saved.updated_by && `, ${saved.updated_by}`}, {formatDate(saved.updated_at)}{changed && ' · есть несохранённые изменения'}</>
+            : 'Новый партнёр: шаблон пока не сохранён'}
         </span>
         {saved && !changed && <button type="button" className="cab-link" onClick={remove}>Удалить шаблон</button>}
         {saved && changed && <button type="button" className="cab-link" onClick={() => { applyTemplate(saved); setStatus(null) }}>Вернуть сохранённый</button>}
