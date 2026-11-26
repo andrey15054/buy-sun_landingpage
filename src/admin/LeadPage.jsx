@@ -284,8 +284,10 @@ function AnketaEditor({ lead, onSaved, onError, builder }) {
               : message ? <span className={message.ok ? 'cab-ok' : 'cab-error'}>{message.text}</span>
               : dirty ? 'Есть несохранённые изменения' : 'Изменений нет'}
           </span>
-          <button className="cab-btn" disabled={!dirty || saving || busy || loadFailed}>
-            {saving ? 'Сохраняем и создаём PDF…' : 'Сохранить и обновить PDF'}
+          {/* Without changes the button rebuilds the PDF as it is, e.g. after the
+              PDF template changed; the history shows «новый PDF» */}
+          <button className="cab-btn" disabled={saving || busy || loadFailed}>
+            {saving ? 'Сохраняем и создаём PDF…' : dirty ? 'Сохранить и обновить PDF' : 'Обновить PDF'}
           </button>
         </div>
       </form>
