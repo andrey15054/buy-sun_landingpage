@@ -122,6 +122,59 @@ async function firstLoginAgain(t, email) {
   return c
 }
 
+describe('managers page', () => {
+  let t, c
+  before(async () => {
+    t = await startTestApp()
+    await addManager(t, 'ahmed@buysun.test')
+    c = (await firstLogin(t, 'ahmed@buysun.test')).c
+  })
+  after(async () => { await t.close() })
+
+  it('adds a manager with a temporary password shown once', async () => {
+    const added = await c.call('POST', '/api/admin/managers', { name: 'Дана', email: ' Dana@BuySun.test ' })
+    assert.equal(added.status, 201)
+    assert.equal(added.body.manager.email, 'dana@buysun.test')
+    assert.equal(added.body.manager.status, 'new')
+    assert.match(added.body.password, /^[A-Za-z0-9]{14}$/)
+    const dana = t.cabinet()
+    assert.equal((await dana.call('POST', '/api/admin/login', { email: 'dana@buysun.test', password: added.body.password })).body.next, 'password')
+    assert.equal((await c.call('POST', '/api/admin/managers', { name: 'Дана', email: 'dana@buysun.test' })).status, 409)
+    assert.equal((await c.call('POST', '/api/admin/managers', { name: '', email: 'x@y.z' })).status, 400)
+    const list = (await c.call('GET', '/api/admin/managers')).body.items
+    assert.deepEqual(list.map((m) => [m.email, m.status, m.me]), [['ahmed@buysun.test', 'active', true], ['dana@buysun.test', 'new', false]])
+    assert.equal(JSON.stringify(list).includes('password_hash'), false)
+  })
+
+  it('resets a forgotten password and ends that manager\'s sessions', async () => {
+    const boris = await addManager(t, 'boris@buysun.test')
+    const { c: b } = await firstLogin(t, boris.email)
+    const reset = await c.call('POST', `/api/admin/managers/${boris.id}/reset`)
+    assert.equal(reset.status, 200)
+    assert.equal((await b.call('GET', '/api/admin/leads')).status, 401, 'logged out')
+    assert.equal((await t.cabinet().call('POST', '/api/admin/login', { email: boris.email, password: NEW })).status, 401, 'old password gone')
+    assert.equal((await t.cabinet().call('POST', '/api/admin/login', { email: boris.email, password: reset.body.password })).body.next, 'password')
+  })
+
+  it('closes and opens access, never one\'s own', async () => {
+    const vera = await addManager(t, 'vera@buysun.test')
+    const { c: v } = await firstLogin(t, vera.email)
+    assert.equal((await c.call('POST', `/api/admin/managers/${vera.id}/disable`)).body.manager.status, 'disabled')
+    assert.equal((await v.call('GET', '/api/admin/leads')).status, 401)
+    assert.equal((await t.cabinet().call('POST', '/api/admin/login', { email: vera.email, password: NEW })).status, 401)
+    assert.equal((await c.call('POST', `/api/admin/managers/${vera.id}/enable`)).body.manager.status, 'active')
+    assert.equal((await t.cabinet().call('POST', '/api/admin/login', { email: vera.email, password: NEW })).body.next, null)
+
+    const me = (await c.call('GET', '/api/admin/managers')).body.items.find((m) => m.me)
+    assert.equal((await c.call('POST', `/api/admin/managers/${me.id}/disable`)).status, 400)
+    assert.equal((await c.call('POST', `/api/admin/managers/${me.id}/reset`)).status, 400)
+    assert.equal((await c.call('POST', '/api/admin/managers/999999/reset')).status, 404)
+    // Only for a logged-in manager, and only from the cabinet page
+    assert.equal((await t.cabinet().call('GET', '/api/admin/managers')).status, 401)
+    assert.equal((await c.call('POST', '/api/admin/managers', { name: 'X', email: 'x@buysun.test' }, { header: false })).status, 403)
+  })
+})
+
 describe('cabinet anketas', () => {
   let t, c, leadId
   before(async () => {

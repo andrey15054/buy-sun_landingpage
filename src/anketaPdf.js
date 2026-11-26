@@ -102,6 +102,22 @@ const dateText = (v) => {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : clean(v)
 }
 const range = (from, to) => (from && to ? `${from} – ${to}` : from || to || '')
+// Height as candidates type it: «164», «164 см», «1.64» or «1,64» (metres)
+// all print as «164 cm»; something else is printed as typed
+const heightText = (v) => {
+  const text = clean(v)
+  const n = Number(text.replace(',', '.').replace(/\s*(cm|см|m|м)\.?$/i, ''))
+  if (!text || !Number.isFinite(n) || n <= 0) return text
+  return `${Math.round(n < 3 ? n * 100 : n)} cm`
+}
+const weightText = (v) => {
+  const text = clean(v)
+  const n = Number(text.replace(',', '.').replace(/\s*(kg|кг)\.?$/i, ''))
+  return text && Number.isFinite(n) && n > 0 ? `${Number(n.toFixed(1))} kg` : text
+}
+// «Нет», «No», «Yok», «Жоқ» in courses or hobbies mean nothing to print
+const NOTHING = /^(нет|нету|no|none|nope|yok|yoktur|жоқ|n\/?a|-+|—|\.+)[.!]*$/i
+const meaningful = (v) => (NOTHING.test(clean(v)) ? '' : clean(v))
 
 export async function buildAnketaPdf(formData, { partner } = {}) {
   // Loaded only when needed: keeps 400 KB of PDF code out of the first page load
@@ -179,8 +195,8 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   leftY += 12
   const personal = [
     ['DATE OF BIRTH', dateText(formData.birthDate)],
-    ['HEIGHT', f('height') && `${f('height')} cm`],
-    ['WEIGHT', f('weight') && `${f('weight')} kg`],
+    ['HEIGHT', heightText(formData.height)],
+    ['WEIGHT', weightText(formData.weight)],
     ['MARITAL STATUS', MARITAL[f('maritalStatus')] || capitalize(f('maritalStatus'))],
     ['START FINISH', f('startDay') && f('startMonth') && f('endDay') && f('endMonth')
       ? `${f('startDay')}.${f('startMonth')} – ${f('endDay')}.${f('endMonth')}` : ''],
@@ -207,7 +223,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
 
   // Courses and hobbies at the bottom of the column, smaller if they are long
-  const interests = [f('courses'), f('hobbies')].filter(Boolean)
+  const interests = [meaningful(formData.courses), meaningful(formData.hobbies)].filter(Boolean)
   if (interests.length) {
     leftY += 4
     title(12.5, WHITE, 0.2)

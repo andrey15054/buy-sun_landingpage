@@ -47,6 +47,7 @@ httpOnly cookie, every change needs the `X-Requested-With: buysun-admin` header:
 | `GET /leads/:id`, `GET /leads/:id/files/:fileId` | One lead with files, Bitrix24 link and change history; a stored file |
 | `PUT /leads/:id` | Save an edited anketa: answers, the new PDF (built in the browser), replaced photos |
 | `POST /leads/:id/share-link` | A new anketa link; the old one stops opening |
+| `GET /managers`, `POST /managers`, `POST /managers/:id/reset`, `POST /managers/:id/disable` / `enable` | The «Менеджеры» page: who can log in, add one (a temporary password shown once), a new temporary password for a forgotten one (that manager's sessions end), close or open access; never for oneself |
 | `GET /google`, `GET /google/connect`, `GET /google/callback`, `DELETE /google` | Google Drive: status, off to Google's consent page, back from it (tied by a one-time state, no cookie), disconnect |
 
 Security of the cabinet: email and password (the code from a phone app was

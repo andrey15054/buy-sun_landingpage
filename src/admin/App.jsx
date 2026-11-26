@@ -4,9 +4,10 @@ import Login from './Login'
 import LeadList from './LeadList'
 import LeadPage from './LeadPage'
 import GooglePage from './GooglePage'
+import ManagersPage from './ManagersPage'
 
 // #/ is the list, #/leads/123 one lead (the link from Bitrix24 opens it
-// directly), #/google the Google Drive connection
+// directly), #/google the Google Drive connection, #/managers who can log in
 const useHashRoute = () => {
   const [hash, setHash] = useState(window.location.hash)
   useEffect(() => {
@@ -16,6 +17,7 @@ const useHashRoute = () => {
   }, [])
   const match = /^#\/leads\/(\d+)/.exec(hash)
   if (match) return { page: 'lead', id: Number(match[1]) }
+  if (/^#\/managers/.test(hash)) return { page: 'managers' }
   return /^#\/google/.test(hash) ? { page: 'google' } : { page: 'list' }
 }
 
@@ -51,6 +53,7 @@ function App() {
       <header className="cab-top">
         <a className="cab-brand" href="#/">BUY SUN <span>Кабинет менеджера</span></a>
         <div className="cab-user">
+          <a className="cab-link" href="#/managers">Менеджеры</a>
           <a className="cab-link" href="#/google">Google Диск</a>
           <span>{me.user.name}</span>
           <button type="button" className="cab-link" onClick={logout}>Выйти</button>
@@ -59,6 +62,7 @@ function App() {
       <main className="cab-main">
         {route.page === 'lead' ? <LeadPage key={route.id} id={route.id} onError={onError} />
           : route.page === 'google' ? <GooglePage onError={onError} />
+          : route.page === 'managers' ? <ManagersPage onError={onError} />
             : <LeadList onError={onError} />}
       </main>
     </div>

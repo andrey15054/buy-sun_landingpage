@@ -99,7 +99,9 @@ sudo -u buysun /opt/buysun/current/deploy/manager.sh add anna@buysun.kz "Анн�
 
 It prints a temporary password; send it to the manager privately. On the
 first login the cabinet asks for a new password. Forgotten password:
-`manager.sh reset <email>`.
+`manager.sh reset <email>`. The same is in the cabinet, page «Менеджеры» at
+the top: any manager can add a colleague, give a new temporary password or
+close someone's access (not their own).
 Someone left: `manager.sh disable <email>`. Everyone: `manager.sh list`.
 
 **File for a partner.** On every anketa page, section “Файл для партнёра”: the

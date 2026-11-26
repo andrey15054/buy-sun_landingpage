@@ -650,11 +650,11 @@ function ResumeModal({ isOpen, onClose }) {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Рост (см)</label>
-                      <input type="number" name="height" value={formData.height} onChange={handleChange} required />
+                      <input type="number" name="height" value={formData.height} onChange={handleChange} min="100" max="230" placeholder="например, 164" required />
                     </div>
                     <div className="form-group">
                       <label>Вес (кг)</label>
-                      <input type="number" name="weight" value={formData.weight} onChange={handleChange} required />
+                      <input type="number" name="weight" value={formData.weight} onChange={handleChange} min="30" max="200" placeholder="например, 58" required />
                     </div>
                   </div>
                 </section>
