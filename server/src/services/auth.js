@@ -1,7 +1,5 @@
 const crypto = require('crypto')
 const { promisify } = require('util')
-const { TOTP, Secret } = require('otpauth')
-const QRCode = require('qrcode')
 
 const scrypt = promisify(crypto.scrypt)
 
@@ -46,40 +44,7 @@ function generatePassword() {
 const newToken = () => crypto.randomBytes(32).toString('base64url')
 const hashToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex')
 
-// ---- codes from the phone (Google Authenticator and alike) ----
-
-const totpFor = (secretBase32, email) => new TOTP({
-  issuer: 'BUY SUN',
-  label: email,
-  algorithm: 'SHA1',
-  digits: 6,
-  period: 30,
-  secret: Secret.fromBase32(secretBase32),
-})
-
-function newTotpSecret() {
-  return new Secret({ size: 20 }).base32
-}
-
-async function totpSetupData(secretBase32, email) {
-  const uri = totpFor(secretBase32, email).toString()
-  return { uri, qr: await QRCode.toDataURL(uri, { margin: 1, width: 220 }), secret: secretBase32 }
-}
-
-// Returns the time step of an accepted code, or null. A code is accepted for
-// the current 30 seconds and one step either side (phone clock drift), and
-// never twice: steps up to lastStep are refused.
-function checkTotp(secretBase32, email, code, lastStep, now = Date.now()) {
-  const token = String(code || '').replace(/\s/g, '')
-  if (!/^\d{6}$/.test(token)) return null
-  const delta = totpFor(secretBase32, email).validate({ token, window: 1, timestamp: now })
-  if (delta === null) return null
-  const step = Math.floor(now / 1000 / 30) + delta
-  if (lastStep != null && step <= lastStep) return null
-  return step
-}
-
 module.exports = {
   hashPassword, verifyPassword, verifyAgainstDummy, generatePassword,
-  newToken, hashToken, newTotpSecret, totpSetupData, checkTotp, totpFor,
+  newToken, hashToken,
 }

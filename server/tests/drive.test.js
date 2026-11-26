@@ -1,19 +1,16 @@
 const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const { startTestApp, anketaPayload, dataUrl, JPEG, PDF } = require('./helpers')
-const { hashPassword, totpFor } = require('../src/services/auth')
+const { hashPassword } = require('../src/services/auth')
 
 const TEMP = 'temporary-pass-1'
 const NEW = 'my-new-password-2026'
-const code = (secret, email) => totpFor(secret, email).generate()
 
 async function login(t, email) {
   await t.prisma.user.create({ data: { email, name: 'Ахмед', password_hash: await hashPassword(TEMP) } })
   const c = t.cabinet()
   await c.call('POST', '/api/admin/login', { email, password: TEMP })
   await c.call('POST', '/api/admin/password', { password: NEW })
-  const setup = await c.call('POST', '/api/admin/2fa/setup')
-  await c.call('POST', '/api/admin/2fa/confirm', { code: code(setup.body.secret, email) })
   return c
 }
 

@@ -2,8 +2,8 @@
 // Managers of the cabinet, from the server's command line:
 //
 //   node scripts/manager.js add anna@buysun.kz "Анна Ли"   new manager, prints a temporary password
-//   node scripts/manager.js reset anna@buysun.kz           lost phone or password: new temporary
-//                                                          password, phone app set up again
+//   node scripts/manager.js reset anna@buysun.kz           forgotten password: new temporary
+//                                                          password, all sessions ended
 //   node scripts/manager.js disable anna@buysun.kz         left the company: no access, logged out
 //   node scripts/manager.js enable anna@buysun.kz
 //   node scripts/manager.js list
@@ -26,8 +26,7 @@ async function main([command, email, ...nameParts]) {
   }
   const printLogin = (password) => {
     console.log(`Временный пароль: ${password}`)
-    console.log('При входе кабинет попросит сменить пароль и подключить код с телефона')
-    console.log('(Google Authenticator, Яндекс Ключ или аналог).')
+    console.log('При первом входе кабинет попросит придумать свой пароль.')
   }
 
   try {
@@ -61,7 +60,7 @@ async function main([command, email, ...nameParts]) {
       const users = await prisma.user.findMany({ orderBy: { id: 'asc' } })
       if (!users.length) console.log('Менеджеров пока нет. Добавьте: add email "Имя"')
       for (const u of users) {
-        const state = u.disabled ? 'доступ закрыт' : !u.totp_enabled ? 'ещё не вошёл' : 'активен'
+        const state = u.disabled ? 'доступ закрыт' : u.must_change_password ? 'ещё не вошёл' : 'активен'
         const last = u.last_login_at ? u.last_login_at.toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' }) : '—'
         console.log(`${u.email}\t${u.name}\t${state}\tпоследний вход: ${last}`)
       }
