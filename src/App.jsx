@@ -10,6 +10,7 @@ import Gallery from './Gallery'
 import Section9 from './Section9'
 import PriceSplit from './PriceSplit'
 import Faq from './Faq'
+import Vacancies from './Vacancies'
 import Footer from './Footer'
 import './App.css'
 
@@ -19,6 +20,7 @@ function App() {
       <Hero />
       <Section2 />
       <Section3 />
+      <Vacancies />
       <Section4 />
       <Section5 />
       <PriceSplit />

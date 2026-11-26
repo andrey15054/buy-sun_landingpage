@@ -1,5 +1,6 @@
 import { applyPdfFonts } from './pdfFonts'
 import { cropSquarePhoto, fitInBox } from './photoUtils'
+import { positionEn } from './positions'
 
 // The anketa for editing in Canva. Canva turns real text in a PDF into text
 // boxes, so this file is kept simple: white pages, no background, no header or
@@ -88,7 +89,7 @@ export async function buildCanvaPdf(formData) {
   let headY = margin + 10
   pdf.text(nameLines, margin, headY)
   headY += nameLines.length * 11 + 2
-  for (const [label, value] of [['Position', formData.desiredPosition], ['Years', formData.age]]) {
+  for (const [label, value] of [['Position', has(formData.desiredPosition) ? positionEn(formData.desiredPosition) : ''], ['Years', formData.age]]) {
     if (!has(value)) continue
     style('bold', 13, gray)
     pdf.text(`${label}:`, margin, headY)

@@ -1,6 +1,7 @@
 import { applyPdfFonts, TITLE_FONT, TEXT_FONT } from './pdfFonts'
 import { cropRoundPhoto, fitInBox } from './photoUtils'
 import logoAnketa from '/logo_anketa.png'
+import { positionEn } from './positions'
 
 // The partner's logo, header and contacts in the place of the BUY SUN logo.
 // box: the area at the top of the right column, in mm.
@@ -86,10 +87,6 @@ const BLACK = [0, 0, 0]
 const PT = 25.4 / 72 // one point in mm
 
 // The answers in words, as the template shows them
-const POSITIONS = {
-  waiter: 'Waiter', bartender: 'Bartender', receptionist: 'Receptionist', housekeeping: 'Housekeeping',
-  kitchen: 'Kitchen', animator: 'Animator', other: 'Other',
-}
 const MARITAL = { single: 'Single', married: 'Married', divorced: 'Divorced' }
 const clean = (v) => {
   const text = String(v ?? '').trim()
@@ -274,7 +271,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
 
   rightY = 63
-  const position = POSITIONS[f('desiredPosition')] || capitalize(f('desiredPosition'))
+  const position = f('desiredPosition') && positionEn(f('desiredPosition'))
   if (position) {
     rightY += labelled('POSITION', position, { x: 87.8, y: rightY, right: rightEnd, size: 14, labelSize: 16, color: BLACK }) + 8
   } else {

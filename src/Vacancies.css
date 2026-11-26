@@ -1,0 +1,97 @@
+.vacancies {
+  width: 100%;
+  color: #000;
+  background: #ffffff;
+  /* the site's global section style would reset the padding */
+  padding: clamp(4rem, 8vw, 8rem) clamp(1rem, 5vw, 4rem) !important;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.vacancies-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.vacancies-title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.vacancies-lead {
+  text-align: center;
+  color: #555;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+}
+
+.vacancies-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+.vacancy-card {
+  background: linear-gradient(to bottom, #0090FF, #005699);
+  color: #fff;
+  border-radius: 16px;
+  padding: 1.25rem 1rem;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.vacancy-card b {
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  line-height: 1.25;
+}
+
+.vacancy-card span {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.vacancies-cta {
+  margin-top: clamp(2rem, 4vw, 3rem);
+  text-align: center;
+}
+
+.vacancies-btn {
+  display: inline-block;
+  background: #0090FF;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 16px 32px;
+  border-radius: 999px;
+}
+
+.vacancies-btn:hover {
+  background: #0077d6;
+}
+
+@media (max-width: 900px) {
+  .vacancies-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .vacancies-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vacancies-btn {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

@@ -1,6 +1,8 @@
 // The anketa as managers edit it: the same fields, labels and choices as the
 // form candidates fill in on the site (src/ResumeModal.jsx).
 
+import { POSITION_OPTIONS } from '../positions'
+
 const levels = ['C2', 'C1', 'B2', 'B1', 'A2', 'A1'].map((v) => [v, v])
 const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
   .map((name, i) => [String(i + 1).padStart(2, '0'), name])
@@ -30,10 +32,7 @@ export const SECTIONS = [
   {
     title: 'Работа в Турции',
     fields: [
-      select('desiredPosition', 'Желаемая вакансия', [
-        ['waiter', 'Официант'], ['bartender', 'Бармен'], ['receptionist', 'Ресепшн'], ['housekeeping', 'Горничная'],
-        ['kitchen', 'Кухня'], ['animator', 'Аниматор'], ['other', 'Другое'],
-      ]),
+      select('desiredPosition', 'Желаемая вакансия', POSITION_OPTIONS),
       select('isStudent', 'Студент', [['yes', 'Да'], ['no', 'Нет']]),
       select('startMonth', 'Готов начать: месяц', months),
       select('startDay', 'Готов начать: день', days),
