@@ -180,6 +180,63 @@
   line-height: 1.4;
 }
 
+.fill-tips {
+  width: 100%;
+  background: white;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+.fill-tips h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 12px 0;
+}
+
+.fill-tips ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.fill-tips li {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #333;
+  padding-top: 10px;
+  border-top: 1px solid #eef1f4;
+}
+
+.fill-tips li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.fill-tips strong {
+  color: #0090FF;
+}
+
+@media (max-width: 600px) {
+  .fill-tips {
+    padding: 16px;
+  }
+
+  .fill-tips li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
 .all-fields-note {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -371,6 +428,11 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Photo fields and the questions under them, one after another */
+.form-section > .form-group + .form-group {
+  margin-top: 18px;
 }
 
 .form-group label {

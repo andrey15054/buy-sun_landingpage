@@ -134,6 +134,15 @@ describe('anketa', () => {
     assert.equal(lead.email_status, 'sent')
   })
 
+  it('stores up to five photos: selfie, full body and three more', async () => {
+    const extra = dataUrl('image/jpeg', JPEG)
+    const res = await t.post('/api/leads/anketa', anketaPayload({ answers: { phone: '+77770000005' }, files: { additional: extra, additional2: extra, additional3: extra } }))
+    assert.equal(res.status, 201)
+    await t.settle()
+    const lead = await t.prisma.lead.findFirst({ where: { phone: '+77770000005' }, include: { files: true } })
+    assert.deepEqual(lead.files.map((f) => f.kind).sort(), ['additional', 'additional2', 'additional3', 'full_body', 'pdf', 'selfie'])
+  })
+
   it('marks a possible duplicate in the Bitrix24 lead', async () => {
     t.bitrixServer.handlers['crm.duplicate.findbycomm'] = () => ({ status: 200, body: { result: { LEAD: [42], CONTACT: [7] } } })
     await t.post('/api/leads/anketa', anketaPayload())
@@ -163,7 +172,7 @@ describe('anketa', () => {
   })
 
   it('answers 413 to an oversized upload', async () => {
-    const huge = 'data:image/jpeg;base64,' + 'A'.repeat(30 * 1024 * 1024)
+    const huge = 'data:image/jpeg;base64,' + 'A'.repeat(41 * 1024 * 1024)
     const res = await t.post('/api/leads/anketa', anketaPayload({ files: { selfie: huge } }))
     assert.equal(res.status, 413)
   })

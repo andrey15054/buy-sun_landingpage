@@ -164,6 +164,10 @@ access back; the copies stay in Drive.
 - **Going back**: the last 5 builds stay in `/opt/buysun/releases`; the quickest
   way back is to revert the commit on GitHub.
 - **Logs**: `journalctl -u buysun-api -f`, site requests in `/var/log/caddy/buysun.log`.
+- **Caddyfile changes** are not deployed by the auto-update: after a change in
+  `deploy/Caddyfile`, run the `sed … > /etc/caddy/Caddyfile` line from
+  `setup-server.sh`, then `caddy validate --config /etc/caddy/Caddyfile` and
+  `systemctl reload caddy`. (Five anketa photos raised the upload limit to 42 MB.)
 - **Restore**: `server/README.md`, section Backups.
 
 ## Files

@@ -36,8 +36,6 @@ function sections(f) {
       ['Start finish', start],
       ['Citizenship', f.citizenship],
       ['City', f.city],
-      ['Father name', f.fatherName],
-      ['Mother name', f.motherName],
     ]],
     ['EDUCATION', [
       ['Name of employer', f.institution],
@@ -150,7 +148,7 @@ export async function buildCanvaPdf(formData) {
   }
 
   // Full body and additional photo, each whole, on their own page, as in the anketa
-  const photos = [formData.fullBodyPhoto, formData.additionalPhoto1].filter(Boolean)
+  const photos = [formData.fullBodyPhoto, formData.additionalPhoto1, formData.additionalPhoto2, formData.additionalPhoto3].filter(Boolean)
   if (photos.length > 0) {
     pdf.addPage()
     const slotWidth = pageWidth - margin * 2

@@ -72,7 +72,7 @@ function drawPartnerHeader(pdf, { logo, header, contacts }, box) {
 // next page. Used by the form on the site and by the manager cabinet, so an
 // edited anketa looks the same.
 // formData: the anketa answers plus selfiePhoto, fullBodyPhoto and
-// additionalPhoto1 as { dataUrl, width, height, focus? }. Returns a Blob.
+// additionalPhoto1..3 as { dataUrl, width, height, focus? }. Returns a Blob.
 // partner: { logo: { dataUrl, width, height } | null, header, contacts } makes
 // the file for a partner: their header instead of BUY SUN.
 // All sizes are in mm, measured on the template.
@@ -346,17 +346,26 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
 
   // ========== PHOTO PAGE ==========
-  // The full-body and the additional photo (the selfie is on the first page)
-  const photos = [formData.fullBodyPhoto, formData.additionalPhoto1].filter(Boolean)
+  // Up to four photos, two by two, as in the agency's own anketas: the full
+  // body and three more. With fewer of them the selfie fills a free cell.
+  let photos = [formData.fullBodyPhoto, formData.additionalPhoto1, formData.additionalPhoto2, formData.additionalPhoto3].filter(Boolean)
+  if (photos.length < 4 && formData.selfiePhoto) photos = [formData.selfiePhoto, ...photos]
   if (photos.length > 0) {
     pdf.addPage()
-    const pageMargin = 5
-    const slotWidth = PAGE_W - pageMargin * 2
-    const slotHeight = (PAGE_H - pageMargin * 2) / photos.length
-    // The whole photo fits in its slot, so a head or feet are never cut off
+    const margin = 4
+    const gapBetween = 3
+    const cols = photos.length === 1 ? 1 : 2
+    const rows = Math.ceil(photos.length / cols)
+    const cellW = (PAGE_W - margin * 2 - gapBetween * (cols - 1)) / cols
+    const cellH = (PAGE_H - margin * 2 - gapBetween * (rows - 1)) / rows
+    // The whole photo fits in its cell, so a head or feet are never cut off
     photos.forEach((photo, i) => {
-      const { width, height } = fitInBox(photo.width, photo.height, slotWidth, slotHeight)
-      pdf.addImage(photo.dataUrl, 'JPEG', (PAGE_W - width) / 2, pageMargin + i * slotHeight + (slotHeight - height) / 2, width, height)
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = margin + col * (cellW + gapBetween)
+      const y = margin + row * (cellH + gapBetween)
+      const { width, height } = fitInBox(photo.width, photo.height, cellW, cellH)
+      pdf.addImage(photo.dataUrl, 'JPEG', x + (cellW - width) / 2, y + (cellH - height) / 2, width, height)
     })
   }
 
