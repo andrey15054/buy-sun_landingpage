@@ -169,22 +169,6 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
   let leftY = 74
 
-  // The candidate's name under the photo
-  const name = [f('firstName'), f('lastName')].filter(Boolean).join(' ')
-  if (name) {
-    // Smaller for a long name, so it stays within two lines
-    let size = 15
-    let lines
-    for (;;) {
-      title(size, WHITE)
-      lines = pdf.splitTextToSize(name.toUpperCase(), leftRight - leftX)
-      if (lines.length <= 2 || size <= 10) break
-      size -= 1
-    }
-    pdf.text(lines, leftCenter, leftY, { align: 'center', baseline: 'top', lineHeightFactor: 1.15 })
-    leftY += lines.length * size * PT * 1.15 + 5
-  }
-
   const heading = (label, x, y) => {
     const left = x === leftCenter
     title(17, left ? WHITE : BLACK, left ? 0 : 0.3)
@@ -265,6 +249,25 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     const logo = pdf.getImageProperties(logoAnketa)
     const size = fitInBox(logo.width, logo.height, 60.7, 27.9)
     pdf.addImage(logoAnketa, 'PNG', 147 - size.width / 2, 7.9 + (27.9 - size.height) / 2, size.width, size.height)
+  }
+
+  // The candidate's name between the logo and the vacancy, as Ahmed asked.
+  // Smaller for a long name, so it stays within two lines.
+  const name = [f('firstName'), f('lastName')].filter(Boolean).join(' ')
+  if (name) {
+    let size = 22
+    let lines
+    for (;;) {
+      title(size, BLUE, 0.3)
+      lines = pdf.splitTextToSize(name.toUpperCase(), rightEnd - rightX - 10)
+      if (lines.length <= 2 || size <= 13) break
+      size -= 1
+    }
+    const height = lines.length * size * PT * 1.15
+    const top = 39 + (21 - height) / 2
+    lines.forEach((line, i) => {
+      pdf.text(line, rightCenter - titleWidth(line) / 2, top + i * size * PT * 1.15, { baseline: 'top' })
+    })
   }
 
   rightY = 63
