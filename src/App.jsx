@@ -8,6 +8,8 @@ import Section7 from './Section7'
 import Section8 from './Section8'
 import Gallery from './Gallery'
 import Section9 from './Section9'
+import PriceSplit from './PriceSplit'
+import Faq from './Faq'
 import Footer from './Footer'
 import './App.css'
 
@@ -19,9 +21,11 @@ function App() {
       <Section3 />
       <Section4 />
       <Section5 />
+      <PriceSplit />
       <Section6 />
       <Section7 />
       <Section8 />
+      <Faq />
       <Section9 />
       <Gallery />
       <Footer />

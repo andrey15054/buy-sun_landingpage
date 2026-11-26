@@ -1,0 +1,124 @@
+.faq {
+  width: 100%;
+  color: #000;
+  background: #ffffff;
+  /* the site's global section style would reset the padding */
+  padding: clamp(4rem, 8vw, 8rem) clamp(1rem, 5vw, 4rem) !important;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.faq-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.faq-title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  color: #000;
+  text-align: center;
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+}
+
+.faq-list {
+  display: grid;
+  gap: 12px;
+}
+
+.faq-item {
+  background: #f5f8fb;
+  border-radius: 16px;
+  border: 1px solid #e3e9ef;
+  overflow: hidden;
+}
+
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 20px 56px 20px 24px;
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  font-weight: 700;
+  color: #000;
+  position: relative;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: '+';
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0090FF;
+  color: #fff;
+  font-size: 20px;
+  line-height: 28px;
+  text-align: center;
+  font-weight: 400;
+}
+
+.faq-item[open] summary::after {
+  content: '−';
+}
+
+.faq-item summary:focus-visible {
+  outline: 3px solid rgba(0, 144, 255, 0.4);
+  outline-offset: -3px;
+}
+
+.faq-item p {
+  margin: 0;
+  padding: 0 24px 22px;
+  color: #333;
+  line-height: 1.55;
+}
+
+.faq-cta {
+  margin-top: clamp(2rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.faq-cta p {
+  margin: 0;
+  color: #555;
+}
+
+.faq-btn {
+  display: inline-block;
+  background: #0090FF;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 16px 32px;
+  border-radius: 999px;
+}
+
+.faq-btn:hover {
+  background: #0077d6;
+}
+
+@media (max-width: 600px) {
+  .faq-item summary {
+    padding: 18px 52px 18px 18px;
+  }
+
+  .faq-item p {
+    padding: 0 18px 18px;
+  }
+
+  .faq-btn {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
