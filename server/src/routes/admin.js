@@ -310,10 +310,10 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
     } catch (err) { next(err) }
   })
 
-  // PDF up to 8 MB and three photos up to 4 MB each, base64 adds a third
+  // PDF up to 8 MB and five photos up to 4 MB each, base64 adds a third
   // The login is checked before the body is read: without one, nobody can make
-  // the server take in 28 MB
-  router.put('/leads/:id', loadSession, requireFull, express.json({ limit: '28mb' }), async (req, res, next) => {
+  // the server take in 40 MB
+  router.put('/leads/:id', loadSession, requireFull, express.json({ limit: '40mb' }), async (req, res, next) => {
     try {
       const data = anketaEditSchema.parse(req.body)
       const lead = await leadAdmin.update(leadId(req), data, req.user)

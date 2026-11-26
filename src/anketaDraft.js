@@ -9,7 +9,7 @@ const DB_NAME = 'buysun-anketa'
 const STORE = 'photos'
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
-export const PHOTO_FIELDS = ['selfiePhoto', 'fullBodyPhoto', 'additionalPhoto1']
+export const PHOTO_FIELDS = ['selfiePhoto', 'fullBodyPhoto', 'additionalPhoto1', 'additionalPhoto2', 'additionalPhoto3']
 
 const isExpired = (savedAt) => !savedAt || Date.now() - savedAt > MAX_AGE_MS
 

@@ -28,7 +28,11 @@ const OPTION_LABELS = {
     animator: 'Аниматор',
     other: 'Другое',
   },
-  source: { social: 'Социальные сети', friend: 'От друзей', advertisement: 'Реклама', other: 'Другое' },
+  source: {
+    instagram: 'Instagram', tiktok: 'TikTok', advertisement: 'Реклама', threads: 'Threads', '2gis': '2ГИС', friend: 'Рекомендации друзей',
+    // answers from the earlier version of the form
+    social: 'Социальные сети', other: 'Другое',
+  },
 }
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']

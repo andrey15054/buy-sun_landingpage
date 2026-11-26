@@ -6,7 +6,7 @@ const { newShareToken } = require('../utils/shareToken')
 const MAX_ID = 2147483647 // largest id the database column holds
 const PAGE_SIZE = 30
 
-const FILE_LABELS = { pdf: 'PDF анкеты', selfie: 'фото лица', full_body: 'фото в полный рост', additional: 'доп. фото' }
+const FILE_LABELS = { pdf: 'PDF анкеты', selfie: 'фото лица', full_body: 'фото в полный рост', additional: 'доп. фото', additional2: 'доп. фото 2', additional3: 'доп. фото 3' }
 
 // Leads for the manager cabinet: list, one lead, saving an edited anketa
 function createLeadAdmin({ prisma, storage, bitrixPortal }) {

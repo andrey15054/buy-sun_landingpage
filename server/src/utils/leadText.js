@@ -19,6 +19,8 @@ const FILE_NAMES = {
   selfie: 'Фото лицо',
   full_body: 'Фото в полный рост',
   additional: 'Фото дополнительное',
+  additional2: 'Фото дополнительное 2',
+  additional3: 'Фото дополнительное 3',
 }
 
 const esc = (value) => String(value ?? '')

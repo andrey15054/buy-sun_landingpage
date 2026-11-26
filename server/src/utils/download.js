@@ -1,6 +1,6 @@
 // Aigerim_Nurlanova_BUYSUN.pdf, Aigerim_Nurlanova_photo.jpg: the candidate's
 // name, as the partner and Canva files are named in the cabinet
-const FILE_SUFFIX = { pdf: 'BUYSUN', selfie: 'photo', full_body: 'full_body', additional: 'photo_2' }
+const FILE_SUFFIX = { pdf: 'BUYSUN', selfie: 'photo', full_body: 'full_body', additional: 'photo_2', additional2: 'photo_3', additional3: 'photo_4' }
 const downloadName = (file) => {
   const answers = file.lead?.answers || {}
   const parts = [answers.firstName, answers.lastName].map((v) => String(v || '').trim()).filter(Boolean)

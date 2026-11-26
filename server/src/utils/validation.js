@@ -68,6 +68,8 @@ const FILE_RULES = {
   selfie: { mime: 'image/jpeg', maxBytes: 4 * MB },
   full_body: { mime: 'image/jpeg', maxBytes: 4 * MB },
   additional: { mime: 'image/jpeg', maxBytes: 4 * MB },
+  additional2: { mime: 'image/jpeg', maxBytes: 4 * MB },
+  additional3: { mime: 'image/jpeg', maxBytes: 4 * MB },
   // A partner's logo; the cabinet always converts it to PNG to keep transparency
   logo: { mime: 'image/png', maxBytes: 1 * MB },
 }
@@ -82,6 +84,8 @@ const anketaFiles = z.object({
   selfie: dataUrl('selfie'),
   full_body: dataUrl('full_body'),
   additional: dataUrl('additional'),
+  additional2: dataUrl('additional2'),
+  additional3: dataUrl('additional3'),
 })
 
 const anketaSchema = z.object({

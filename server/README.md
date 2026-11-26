@@ -5,6 +5,11 @@ bottom, the candidate anketa), stores every lead in Postgres (anketa PDF and
 photos on disk) and passes it to Bitrix24 and to the work email. Managers open
 and correct anketas in the cabinet at `/admin/`; each Bitrix24 lead links there.
 
+An anketa has five photos: the selfie (the round photo on the first page of the
+PDF), the full body and three more (`additional`, `additional2`, `additional3`);
+those four are on the second page, two by two. Phone, email and Instagram are
+kept for managers only and are never printed in the PDF.
+
 The lead is stored **before** anything is sent: if Bitrix24 or email are down,
 nothing is lost. The outcome of each delivery is kept in `leads.bitrix_status`
 and `leads.email_status` (`sent`, `failed` with the reason in `*_error`,

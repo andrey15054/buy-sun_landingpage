@@ -21,7 +21,7 @@ __DOMAIN__ {
 	# Forms and anketa: the API on the same machine
 	handle /api/* {
 		request_body {
-			max_size 30MB
+			max_size 42MB
 		}
 		reverse_proxy 127.0.0.1:3001
 	}

@@ -19,7 +19,6 @@ const emptyForm = {
   birthDate: '',
   maritalStatus: '',
   citizenship: '',
-  nationality: '',
   gender: '',
   height: '',
   weight: '',
@@ -55,13 +54,13 @@ const emptyForm = {
   startDay: '',
   endMonth: '',
   endDay: '',
-  fatherName: '',
-  motherName: '',
   hobbies: '',
   courses: '',
   selfiePhoto: null,
   fullBodyPhoto: null,
   additionalPhoto1: null,
+  additionalPhoto2: null,
+  additionalPhoto3: null,
   instagram: '',
   source: ''
 }
@@ -114,6 +113,14 @@ function ResumeModal({ isOpen, onClose }) {
       step4Title: 'Ждите звонка',
       step4Desc: 'Менеджер свяжется с вами',
       allFieldsRequired: 'Все поля обязательны',
+      tipsTitle: 'Перед тем как начать',
+      tips: [
+        ['Без ошибок', 'Данные — как в паспорте. Нажимая «Отправить резюме», вы подтверждаете, что всё верно.'],
+        ['Латиницей', 'Анкету читает работодатель в Турции: пишите по-английски или латиницей (Almaty, Kazakhstan). Если ответа нет, поставьте «-».'],
+        ['Опыт работы', 'Минимум 2 места работы, лучше 3. Подработка, практика и сезонная работа тоже подходят.'],
+        ['5 фото', 'Портрет для главной (официальный), фото в полный рост и ещё 3 хороших фото. Подготовьте их заранее.'],
+        ['Отправка', 'После «Отправить резюме» не закрывайте страницу, пока не появится «Анкета отправлена!». Потом отправьте нам сообщение в WhatsApp.'],
+      ],
       startForm: 'Начать заполнение',
       downloadPdf: 'Скачать PDF',
       sendWhatsApp: 'Отправить в WhatsApp',
@@ -160,6 +167,14 @@ function ResumeModal({ isOpen, onClose }) {
       step4Title: 'Wait for a call',
       step4Desc: 'A manager will contact you',
       allFieldsRequired: 'All fields are required',
+      tipsTitle: 'Before you start',
+      tips: [
+        ['No mistakes', 'Data as in your passport. By clicking «Submit Resume» you confirm it is correct.'],
+        ['In English', 'The employer in Türkiye reads the form: write in English or Latin letters. If there is no answer, put «-».'],
+        ['Work experience', 'At least 2 places of work, better 3. Part-time, internships and seasonal jobs count.'],
+        ['5 photos', 'A formal portrait, a full-length photo and 3 more good photos. Get them ready in advance.'],
+        ['Sending', 'After «Submit Resume» keep the page open until «Your form has been sent!» appears. Then send us the WhatsApp message.'],
+      ],
       startForm: 'Start filling',
       downloadPdf: 'Download PDF',
       sendWhatsApp: 'Send to WhatsApp',
@@ -344,6 +359,8 @@ function ResumeModal({ isOpen, onClose }) {
           selfie: formData.selfiePhoto?.dataUrl,
           full_body: formData.fullBodyPhoto?.dataUrl,
           additional: formData.additionalPhoto1?.dataUrl,
+          additional2: formData.additionalPhoto2?.dataUrl,
+          additional3: formData.additionalPhoto3?.dataUrl,
         },
       })
       const link = sent?.share ? `${window.location.origin}/api/a/${sent.share}` : ''
@@ -541,6 +558,15 @@ function ResumeModal({ isOpen, onClose }) {
                 </div>
               </div>
 
+              <section className="fill-tips" aria-labelledby="fill-tips-title">
+                <h3 id="fill-tips-title">{t.tipsTitle}</h3>
+                <ul>
+                  {t.tips.map(([title, text]) => (
+                    <li key={title}><strong>{title}</strong><span>{text}</span></li>
+                  ))}
+                </ul>
+              </section>
+
               <p className="all-fields-note">{t.allFieldsRequired}</p>
 
               <button 
@@ -601,6 +627,13 @@ function ResumeModal({ isOpen, onClose }) {
                       <input type="email" name="email" maxLength={maxLength('email')} value={formData.email} onChange={handleChange} placeholder="Введите ваш email" required />
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Логин в Instagram (без @)</label>
+                      <input type="text" name="instagram" maxLength={maxLength('instagram')} value={formData.instagram} onChange={handleChange} placeholder="Введите ваш логин в Instagram" />
+                    </div>
+                  </div>
+                  <p className="form-hint">Телефон, email и Instagram видит только менеджер BUY SUN. В резюме для работодателя они не попадают.</p>
                   
                   <div className="form-row">
                     <div className="form-group">
@@ -632,10 +665,6 @@ function ResumeModal({ isOpen, onClose }) {
                     <div className="form-group">
                       <label>Гражданство (на английском)</label>
                       <input type="text" name="citizenship" maxLength={maxLength('citizenship')} value={formData.citizenship} onChange={handleChange} placeholder="e.g. Kazakhstan, Russia" required />
-                    </div>
-                    <div className="form-group">
-                      <label>Национальность (на английском)</label>
-                      <input type="text" name="nationality" maxLength={maxLength('nationality')} value={formData.nationality} onChange={handleChange} placeholder="e.g. Kazakh, Russian" required />
                     </div>
                     <div className="form-group">
                       <label>Пол</label>
@@ -951,16 +980,6 @@ function ResumeModal({ isOpen, onClose }) {
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Имя отца (на англ.)</label>
-                      <input type="text" name="fatherName" maxLength={maxLength('fatherName')} value={formData.fatherName} onChange={handleChange} placeholder="Введите имя отца" required />
-                    </div>
-                    <div className="form-group">
-                      <label>Имя матери (на англ.)</label>
-                      <input type="text" name="motherName" maxLength={maxLength('motherName')} value={formData.motherName} onChange={handleChange} placeholder="Введите имя матери" required />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
                       <label>Ваши хобби</label>
                       <input type="text" name="hobbies" maxLength={maxLength('hobbies')} value={formData.hobbies} onChange={handleChange} placeholder="Введите ваши хобби" required />
                     </div>
@@ -984,6 +1003,7 @@ function ResumeModal({ isOpen, onClose }) {
                       <li>Не фото издалека</li>
                       <li>Чем лучше фото — тем больше шанс одобрения вакансии!</li>
                       <li><strong>Фото для главной должно быть более официальным!</strong></li>
+                      <li>Нужно 5 фото: главное (на первой странице анкеты), в полный рост и ещё 3 — эти 4 будут на второй странице</li>
                     </ul>
                   </div>
                   <PhotoField
@@ -1003,25 +1023,27 @@ function ResumeModal({ isOpen, onClose }) {
                     t={t}
                     onChange={handlePhotoChange}
                   />
-                  <PhotoField
-                    name="additionalPhoto1"
-                    label="Дополнительная фотография"
-                    state={photoFieldState('additionalPhoto1')}
-                    t={t}
-                    onChange={handlePhotoChange}
-                  />
-                  <div className="form-group">
-                    <label>Логин в Instagram (без @)</label>
-                    <input type="text" name="instagram" maxLength={maxLength('instagram')} value={formData.instagram} onChange={handleChange} placeholder="Введите ваш логин в Instagram" />
-                  </div>
+                  {[1, 2, 3].map((n) => (
+                    <PhotoField
+                      key={n}
+                      name={`additionalPhoto${n}`}
+                      label={`Ещё фото ${n} из 3 (обязательно)`}
+                      required
+                      state={photoFieldState(`additionalPhoto${n}`)}
+                      t={t}
+                      onChange={handlePhotoChange}
+                    />
+                  ))}
                   <div className="form-group">
                     <label>Откуда вы о нас узнали?</label>
                     <select name="source" value={formData.source || ''} onChange={handleChange} required>
                       <option value="">---</option>
-                      <option value="social">Социальные сети</option>
-                      <option value="friend">От друзей</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="tiktok">TikTok</option>
                       <option value="advertisement">Реклама</option>
-                      <option value="other">Другое</option>
+                      <option value="threads">Threads</option>
+                      <option value="2gis">2ГИС</option>
+                      <option value="friend">Рекомендации друзей</option>
                     </select>
                   </div>
                 </section>

@@ -22,7 +22,6 @@ export const SECTIONS = [
       text('birthDate', 'Дата рождения', { type: 'date' }),
       select('maritalStatus', 'Семейное положение', [['single', 'Холост / не замужем'], ['married', 'Женат / замужем'], ['divorced', 'Разведён / разведена']]),
       text('citizenship', 'Гражданство (на англ.)'),
-      text('nationality', 'Национальность (на англ.)'),
       select('gender', 'Пол', [['male', 'Мужской'], ['female', 'Женский']]),
       text('height', 'Рост (см)', { type: 'number' }),
       text('weight', 'Вес (кг)', { type: 'number' }),
@@ -75,12 +74,10 @@ export const SECTIONS = [
   {
     title: 'Дополнительно',
     fields: [
-      text('fatherName', 'Имя отца (на англ.)'),
-      text('motherName', 'Имя матери (на англ.)'),
       text('hobbies', 'Хобби', { wide: true }),
       text('courses', 'Курсы и сертификаты', { wide: true }),
       text('instagram', 'Instagram (без @)'),
-      select('source', 'Откуда узнал', [['social', 'Социальные сети'], ['friend', 'От друзей'], ['advertisement', 'Реклама'], ['other', 'Другое']]),
+      select('source', 'Откуда узнал', [['instagram', 'Instagram'], ['tiktok', 'TikTok'], ['advertisement', 'Реклама'], ['threads', 'Threads'], ['2gis', '2ГИС'], ['friend', 'Рекомендации друзей'], ['social', 'Социальные сети (старая анкета)'], ['other', 'Другое (старая анкета)']]),
       text('manager', 'Менеджер (указал кандидат)'),
     ],
   },
@@ -91,7 +88,9 @@ export const FIELD_NAMES = SECTIONS.flatMap((s) => s.fields.map((f) => f.name))
 export const PHOTOS = [
   { name: 'selfiePhoto', kind: 'selfie', label: 'Главная фотография (лицо)' },
   { name: 'fullBodyPhoto', kind: 'full_body', label: 'Фотография в полный рост' },
-  { name: 'additionalPhoto1', kind: 'additional', label: 'Дополнительная фотография' },
+  { name: 'additionalPhoto1', kind: 'additional', label: 'Ещё фото 1' },
+  { name: 'additionalPhoto2', kind: 'additional2', label: 'Ещё фото 2' },
+  { name: 'additionalPhoto3', kind: 'additional3', label: 'Ещё фото 3' },
 ]
 
 // Every field present, so inputs are always controlled

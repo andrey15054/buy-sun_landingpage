@@ -49,8 +49,8 @@ function leadsRouter({ config, leads, delivery }) {
   })
 
   const smallJson = express.json({ limit: '20kb' })
-  // PDF up to 8 MB and three photos up to 4 MB each, base64 adds a third
-  const anketaJson = express.json({ limit: '28mb' })
+  // PDF up to 8 MB and five photos up to 4 MB each, base64 adds a third
+  const anketaJson = express.json({ limit: '40mb' })
   const anketaTurn = oneAtATime(3)
 
   router.post('/leads/quick', limiter(10), smallJson, honeypot, async (req, res, next) => {
