@@ -485,6 +485,13 @@
   margin: 0 0 16px 0;
 }
 
+.form-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #333;
+  margin: -8px 0 20px 0;
+}
+
 .form-submit-section {
   text-align: center;
   padding-top: 24px;

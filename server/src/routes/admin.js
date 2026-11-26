@@ -198,6 +198,72 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
     } catch (err) { next(err) }
   })
 
+  // ---- managers ----
+  // Every manager can add a colleague, give a new temporary password or close
+  // someone's access (a small agency: no separate roles). A temporary password
+  // is shown once, to be sent privately; it must be changed on the first login.
+
+  const managerView = (u, me) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    status: u.disabled ? 'disabled' : u.must_change_password ? 'new' : 'active',
+    last_login_at: u.last_login_at,
+    me: u.id === me.id,
+  })
+  const managerId = (req) => z.coerce.number().int().positive().max(2147483647).parse(req.params.id)
+  const notMe = (req, id) => { if (id === req.user.id) throw fail(400, 'Это ваш вход: свой пароль меняйте при входе, а доступ себе закрыть нельзя') }
+
+  router.get('/managers', loadSession, requireFull, async (req, res, next) => {
+    try {
+      const users = await prisma.user.findMany({ orderBy: { id: 'asc' } })
+      res.json({ items: users.map((u) => managerView(u, req.user)) })
+    } catch (err) { next(err) }
+  })
+
+  router.post('/managers', loadSession, requireFull, json, async (req, res, next) => {
+    try {
+      const { name, email } = z.object({
+        name: z.string().trim().min(1, 'Укажите имя').max(100),
+        email: z.string().trim().toLowerCase().max(200).regex(/^\S+@\S+\.\S+$/, 'Укажите email'),
+      }).parse(req.body)
+      if (await prisma.user.findUnique({ where: { email } })) throw fail(409, 'Менеджер с таким email уже есть')
+      const password = auth.generatePassword()
+      const user = await prisma.user.create({ data: { email, name, password_hash: await auth.hashPassword(password) } })
+      logger.info('Manager added', { userId: user.id, by: req.user.id })
+      res.status(201).json({ manager: managerView(user, req.user), password })
+    } catch (err) { next(err) }
+  })
+
+  // Forgotten password: a new temporary one, every session of that manager ends
+  router.post('/managers/:id/reset', loadSession, requireFull, async (req, res, next) => {
+    try {
+      const id = managerId(req)
+      notMe(req, id)
+      const password = auth.generatePassword()
+      const user = await prisma.user.update({
+        where: { id },
+        data: { password_hash: await auth.hashPassword(password), must_change_password: true, failed_attempts: 0, locked_until: null, disabled: false },
+      }).catch(() => { throw fail(404, 'Менеджер не найден') })
+      await prisma.session.deleteMany({ where: { user_id: id } })
+      logger.security('Manager password reset', { userId: id, by: req.user.id })
+      res.json({ manager: managerView(user, req.user), password })
+    } catch (err) { next(err) }
+  })
+
+  // Someone left: no access at once; «Открыть доступ» brings it back
+  router.post(['/managers/:id/disable', '/managers/:id/enable'], loadSession, requireFull, async (req, res, next) => {
+    try {
+      const id = managerId(req)
+      notMe(req, id)
+      const disabled = req.path.endsWith('/disable')
+      const user = await prisma.user.update({ where: { id }, data: { disabled } }).catch(() => { throw fail(404, 'Менеджер не найден') })
+      if (disabled) await prisma.session.deleteMany({ where: { user_id: id } })
+      logger.security(disabled ? 'Manager access closed' : 'Manager access opened', { userId: id, by: req.user.id })
+      res.json({ manager: managerView(user, req.user) })
+    } catch (err) { next(err) }
+  })
+
   // ---- leads ----
 
   router.get('/leads', loadSession, requireFull, async (req, res, next) => {
@@ -301,27 +367,42 @@ function adminRouter({ config, prisma, storage, leadAdmin, templates, delivery =
     } catch (err) { next(err) }
   })
 
-  // ---- the partner template ----
+  // ---- partner templates ----
 
-  router.get('/template', loadSession, requireFull, async (req, res, next) => {
+  const templateId = (req) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) throw Object.assign(new Error('Шаблон не найден'), { status: 404, expose: true })
+    return id
+  }
+
+  router.get('/templates', loadSession, requireFull, async (req, res, next) => {
     try {
-      res.json({ template: await templates.get() })
+      res.json({ items: await templates.list() })
     } catch (err) { next(err) }
   })
 
-  router.put('/template', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
+  router.post('/templates', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
     try {
-      const template = await templates.save(partnerTemplateSchema.parse(req.body), req.user)
-      logger.info('Partner template saved', { userId: req.user.id })
+      const template = await templates.create(partnerTemplateSchema.parse(req.body), req.user)
+      logger.info('Partner template added', { userId: req.user.id, templateId: template.id })
+      res.status(201).json({ template })
+    } catch (err) { next(err) }
+  })
+
+  router.put('/templates/:id', loadSession, requireFull, express.json({ limit: '2mb' }), async (req, res, next) => {
+    try {
+      const template = await templates.update(templateId(req), partnerTemplateSchema.parse(req.body), req.user)
+      logger.info('Partner template saved', { userId: req.user.id, templateId: template.id })
       res.json({ template })
     } catch (err) { next(err) }
   })
 
-  router.delete('/template', loadSession, requireFull, async (req, res, next) => {
+  router.delete('/templates/:id', loadSession, requireFull, async (req, res, next) => {
     try {
-      await templates.remove()
-      logger.info('Partner template removed', { userId: req.user.id })
-      res.json({ template: null })
+      const id = templateId(req)
+      await templates.remove(id)
+      logger.info('Partner template removed', { userId: req.user.id, templateId: id })
+      res.json({ ok: true })
     } catch (err) { next(err) }
   })
 

@@ -160,6 +160,13 @@ a { color: var(--cab-accent); }
 
 /* One lead */
 .cab-back { display: inline-block; margin-bottom: 12px; text-decoration: none; }
+.cab-managers { list-style: none; margin: 0; padding: 0; }
+.cab-managers li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--cab-line); }
+.cab-managers li:first-child { border-top: 0; padding-top: 0; }
+.cab-managers .cab-badges { align-items: center; }
+.cab-add-manager { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.cab-add-manager .cab-field { flex: 1 1 220px; margin: 0; }
+.cab-issued { border-color: var(--cab-ok); }
 .cab-share { margin: 0 0 20px; padding: 12px 16px; background: var(--cab-card); border: 1px solid var(--cab-line); border-radius: 10px; }
 .cab-share label { display: block; margin-bottom: 6px; color: var(--cab-muted); font-size: 14px; }
 .cab-share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -274,4 +281,13 @@ a { color: var(--cab-accent); }
 .cab-canva small { font-size: 12px; margin: 0; }
 @media (max-width: 720px) {
   .cab-canva { max-width: none; width: 100%; }
+}
+
+.cab-gap { margin-top: 10px; }
+.cab-user .cab-link, .cab-brand { white-space: nowrap; }
+/* A phone: the header keeps the links on one line, without the name */
+@media (max-width: 600px) {
+  .cab-user { gap: 10px; }
+  .cab-user > span { display: none; }
+  .cab-brand span { display: none; }
 }

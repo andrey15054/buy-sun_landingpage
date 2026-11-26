@@ -99,15 +99,18 @@ sudo -u buysun /opt/buysun/current/deploy/manager.sh add anna@buysun.kz "Анн�
 
 It prints a temporary password; send it to the manager privately. On the
 first login the cabinet asks for a new password. Forgotten password:
-`manager.sh reset <email>`.
+`manager.sh reset <email>`. The same is in the cabinet, page «Менеджеры» at
+the top: any manager can add a colleague, give a new temporary password or
+close someone's access (not their own).
 Someone left: `manager.sh disable <email>`. Everyone: `manager.sh list`.
 
 **File for a partner.** On every anketa page, section “Файл для партнёра”: the
 manager picks the partner’s logo, header and contacts, sees a preview and
 downloads a PDF named `Name_Surname_CV.pdf`. There is no BUY SUN in it (not
 in the text, the font name or the file name), and the BUY SUN manager’s name
-is left out. One template is saved for all managers (TAYGA GRUP is there from the start;
-any manager can replace it) and is part of the nightly
+is left out. A template is saved per partner (TAYGA GRUP, PATIKA, …), shared by
+all managers: the list «Шаблон» picks one, «+ Новый партнёр» adds another. The
+browser remembers the last partner chosen. Templates are part of the nightly
 database backup.
 The button «Анкета TAYGA GRUP (Word)» fills TAYGA's own CV form
 (`src/admin/partnerForms/tayga.docx`) with the anketa and the photo; their

@@ -102,6 +102,22 @@ const dateText = (v) => {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : clean(v)
 }
 const range = (from, to) => (from && to ? `${from} – ${to}` : from || to || '')
+// Height as candidates type it: «164», «164 см», «1.64» or «1,64» (metres)
+// all print as «164 cm»; something else is printed as typed
+const heightText = (v) => {
+  const text = clean(v)
+  const n = Number(text.replace(',', '.').replace(/\s*(cm|см|m|м)\.?$/i, ''))
+  if (!text || !Number.isFinite(n) || n <= 0) return text
+  return `${Math.round(n < 3 ? n * 100 : n)} cm`
+}
+const weightText = (v) => {
+  const text = clean(v)
+  const n = Number(text.replace(',', '.').replace(/\s*(kg|кг)\.?$/i, ''))
+  return text && Number.isFinite(n) && n > 0 ? `${Number(n.toFixed(1))} kg` : text
+}
+// «Нет», «No», «Yok», «Жоқ» in courses or hobbies mean nothing to print
+const NOTHING = /^(нет|нету|no|none|nope|yok|yoktur|жоқ|n\/?a|-+|—|\.+)[.!]*$/i
+const meaningful = (v) => (NOTHING.test(clean(v)) ? '' : clean(v))
 
 export async function buildAnketaPdf(formData, { partner } = {}) {
   // Loaded only when needed: keeps 400 KB of PDF code out of the first page load
@@ -114,7 +130,9 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   const title = (size, color, space = 0) => {
     pdf.setFont(TITLE_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(space)
   }
-  const text = (size, color) => { pdf.setFont(TEXT_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(0) }
+  // Values in the same bold font as the labels: Ahmed asked for one font on
+  // the whole anketa, a thin font after a bold label was hard to read
+  const text = (size, color) => { pdf.setFont(TITLE_FONT, 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); pdf.setCharSpace(0) }
   // jsPDF leaves the letter spacing out of the width
   const titleWidth = (str) => pdf.getTextWidth(str) + pdf.getCharSpace() * str.length
   const lineH = (size) => size * PT * 1.2
@@ -135,7 +153,8 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     text(size, color)
     const v = String(value)
     if (!below && pdf.getTextWidth(v) <= right - labelEnd) {
-      if (!dry) pdf.text(v, labelEnd, y, { baseline: 'top' })
+      // On the label's line: both letters stand on one baseline
+      if (!dry) pdf.text(v, labelEnd, y + (labelSize - size) * PT * 0.75, { baseline: 'top' })
       return lineH(size)
     }
     const lines = pdf.splitTextToSize(v, right - x)
@@ -153,22 +172,6 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
   let leftY = 74
 
-  // The candidate's name under the photo
-  const name = [f('firstName'), f('lastName')].filter(Boolean).join(' ')
-  if (name) {
-    // Smaller for a long name, so it stays within two lines
-    let size = 15
-    let lines
-    for (;;) {
-      title(size, WHITE)
-      lines = pdf.splitTextToSize(name.toUpperCase(), leftRight - leftX)
-      if (lines.length <= 2 || size <= 10) break
-      size -= 1
-    }
-    pdf.text(lines, leftCenter, leftY, { align: 'center', baseline: 'top', lineHeightFactor: 1.15 })
-    leftY += lines.length * size * PT * 1.15 + 5
-  }
-
   const heading = (label, x, y) => {
     const left = x === leftCenter
     title(17, left ? WHITE : BLACK, left ? 0 : 0.3)
@@ -179,8 +182,8 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   leftY += 12
   const personal = [
     ['DATE OF BIRTH', dateText(formData.birthDate)],
-    ['HEIGHT', f('height') && `${f('height')} cm`],
-    ['WEIGHT', f('weight') && `${f('weight')} kg`],
+    ['HEIGHT', heightText(formData.height)],
+    ['WEIGHT', weightText(formData.weight)],
     ['MARITAL STATUS', MARITAL[f('maritalStatus')] || capitalize(f('maritalStatus'))],
     ['START FINISH', f('startDay') && f('startMonth') && f('endDay') && f('endMonth')
       ? `${f('startDay')}.${f('startMonth')} – ${f('endDay')}.${f('endMonth')}` : ''],
@@ -207,7 +210,7 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
   }
 
   // Courses and hobbies at the bottom of the column, smaller if they are long
-  const interests = [f('courses'), f('hobbies')].filter(Boolean)
+  const interests = [meaningful(formData.courses), meaningful(formData.hobbies)].filter(Boolean)
   if (interests.length) {
     leftY += 4
     title(12.5, WHITE, 0.2)
@@ -249,6 +252,25 @@ export async function buildAnketaPdf(formData, { partner } = {}) {
     const logo = pdf.getImageProperties(logoAnketa)
     const size = fitInBox(logo.width, logo.height, 60.7, 27.9)
     pdf.addImage(logoAnketa, 'PNG', 147 - size.width / 2, 7.9 + (27.9 - size.height) / 2, size.width, size.height)
+  }
+
+  // The candidate's name between the logo and the vacancy, as Ahmed asked.
+  // Smaller for a long name, so it stays within two lines.
+  const name = [f('firstName'), f('lastName')].filter(Boolean).join(' ')
+  if (name) {
+    let size = 22
+    let lines
+    for (;;) {
+      title(size, BLUE, 0.3)
+      lines = pdf.splitTextToSize(name.toUpperCase(), rightEnd - rightX - 10)
+      if (lines.length <= 2 || size <= 13) break
+      size -= 1
+    }
+    const height = lines.length * size * PT * 1.15
+    const top = 39 + (21 - height) / 2
+    lines.forEach((line, i) => {
+      pdf.text(line, rightCenter - titleWidth(line) / 2, top + i * size * PT * 1.15, { baseline: 'top' })
+    })
   }
 
   rightY = 63
