@@ -1,0 +1,198 @@
+.price-split {
+  width: 100%;
+  color: #000;
+  background: #ffffff;
+  /* the site's global section style would reset the padding */
+  padding: clamp(4rem, 8vw, 8rem) clamp(1rem, 5vw, 4rem) !important;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.price-split-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.price-split-title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  color: #000;
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.price-split-lead {
+  text-align: center;
+  color: #555;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+}
+
+.price-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
+}
+
+.price-split-card {
+  border-radius: clamp(12px, 2vw, 24px);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  box-sizing: border-box;
+}
+
+.price-split-card.you {
+  background: #f5f8fb;
+  color: #000;
+  border: 2px solid #0090FF;
+}
+
+.price-split-card.employer {
+  background: linear-gradient(to bottom, #0090FF, #005699);
+  color: #fff;
+}
+
+.price-split-card h3 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  font-weight: 700;
+}
+
+.price-split-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.price-split-card li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 28px;
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.price-split-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0090FF;
+}
+
+.price-split-card.employer li::before {
+  background: #fff;
+}
+
+.price-split-card.you li span {
+  color: #5f6b76;
+  font-size: 0.92rem;
+}
+
+.price-split-salary {
+  margin: 1.25rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  font-weight: 700;
+}
+
+.price-split-steps-title {
+  color: #000;
+  text-align: center;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  margin: clamp(3rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2rem);
+}
+
+.price-split-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.price-split-steps li {
+  background: #f5f8fb;
+  border-radius: 16px;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #333;
+}
+
+.price-split-steps b {
+  color: #000;
+  font-size: 1.05rem;
+}
+
+.price-split-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0090FF;
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.price-split-cta {
+  margin-top: clamp(2rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.price-split-cta p {
+  margin: 0;
+  color: #555;
+}
+
+.price-split-btn {
+  display: inline-block;
+  background: #0090FF;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 16px 32px;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.price-split-btn:hover {
+  background: #0077d6;
+}
+
+@media (max-width: 900px) {
+  .price-split-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .price-split-grid,
+  .price-split-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .price-split-btn {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
