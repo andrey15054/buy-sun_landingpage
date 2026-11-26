@@ -5,6 +5,7 @@
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate'
 import templateUrl from './tayga.docx?url'
 import { defaultFocus } from '../../photoUtils'
+import { positionEn } from '../../positions'
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 const NS = {
@@ -18,7 +19,6 @@ const PHOTO_REL = 'rIdCandidatePhoto'
 const PHOTO_FILE = 'media/candidate-photo.jpeg'
 
 // The form is in English and Turkish: answers stored as codes become English
-const POSITIONS = { waiter: 'Waiter', bartender: 'Bartender', receptionist: 'Receptionist', housekeeping: 'Housekeeping', kitchen: 'Kitchen staff', animator: 'Animator', other: 'Other' }
 const MARITAL = { single: 'Single', married: 'Married', divorced: 'Divorced' }
 
 const clean = (v) => (v === undefined || v === null ? '' : String(v).trim())
@@ -35,7 +35,7 @@ function values(a) {
   const other = clean(a.additionalLanguage) ? `${capital(clean(a.additionalLanguage))}${a.additionalLanguageLevel ? ` — ${a.additionalLanguageLevel}` : ''}` : ''
   return [
     { row: 2, label: 'Full name', cells: { 1: [clean(a.firstName), clean(a.lastName)].filter(Boolean).join(' ') } },
-    { row: 3, label: 'Position', cells: { 1: POSITIONS[a.desiredPosition] || capital(clean(a.desiredPosition)) } },
+    { row: 3, label: 'Position', cells: { 1: clean(a.desiredPosition) && positionEn(clean(a.desiredPosition)) } },
     { row: 4, label: 'Hight', cells: { 1: clean(a.height) && `${clean(a.height)} cm`, 3: clean(a.weight) && `${clean(a.weight)} kg` } },
     { row: 5, label: 'Date of birth', cells: { 1: dateDots(a.birthDate), 3: MARITAL[a.maritalStatus] || capital(clean(a.maritalStatus)) } },
     { row: 6, label: 'Address', cells: { 1: clean(a.city) } },

@@ -19,14 +19,22 @@ const OPTION_LABELS = {
   gender: { male: 'Мужской', female: 'Женский' },
   maritalStatus: { single: 'Холост / не замужем', married: 'Женат / замужем', divorced: 'Разведён / разведена' },
   isStudent: { yes: 'Да', no: 'Нет' },
+  // The same list as src/positions.js
   desiredPosition: {
-    waiter: 'Официант',
     bartender: 'Бармен',
-    receptionist: 'Ресепшн',
+    waiter: 'Официант',
+    guest_relations: 'Guest Relation',
+    kids_animator: 'Детская анимация',
+    sport_animator: 'Спортивная анимация',
+    receptionist: 'Ресепшен',
+    cook: 'Повар',
     housekeeping: 'Горничная',
+    dishwasher: 'Мойка посуды',
+    public_area: 'Уборка территории',
+    other: 'Другое',
+    // anketas sent before 26.11.2026
     kitchen: 'Кухня',
     animator: 'Аниматор',
-    other: 'Другое',
   },
   source: {
     instagram: 'Instagram', tiktok: 'TikTok', advertisement: 'Реклама', threads: 'Threads', '2gis': '2ГИС', friend: 'Рекомендации друзей',

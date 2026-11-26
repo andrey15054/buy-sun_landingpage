@@ -8,6 +8,7 @@ import { buildAnketaPdf } from './anketaPdf'
 import { PHOTO_FIELDS, loadDraft, saveDraftAnswers, saveDraftPhoto, clearDraft } from './anketaDraft'
 import { sendLead, blobToDataUrl, honeypotProps, whatsappLink } from './api'
 import './ResumeModal.css'
+import { POSITIONS, positionRu, positionEn } from './positions'
 
 const emptyForm = {
   firstName: '',
@@ -67,16 +68,6 @@ const emptyForm = {
 
 const PHOTO_SAVE_DELAY_MS = 500
 
-// Vacancy names for the WhatsApp message: [Russian, English]
-const POSITION_NAMES = {
-  waiter: ['Официант', 'Waiter'],
-  bartender: ['Бармен', 'Bartender'],
-  receptionist: ['Ресепшн', 'Receptionist'],
-  housekeeping: ['Горничная', 'Housekeeping'],
-  kitchen: ['Кухня', 'Kitchen'],
-  animator: ['Аниматор', 'Animator'],
-  other: ['Другое', 'Other'],
-}
 
 function ResumeModal({ isOpen, onClose }) {
   const [currentStep, setCurrentStep] = useState(1)
@@ -400,7 +391,7 @@ function ResumeModal({ isOpen, onClose }) {
   // after a failed one the PDF goes by hand.
   const openWhatsApp = (sent, link = '') => {
     const ru = language === 'ru'
-    const position = POSITION_NAMES[formData.desiredPosition]?.[ru ? 0 : 1] || formData.desiredPosition
+    const position = formData.desiredPosition && (ru ? positionRu : positionEn)(formData.desiredPosition)
     const day = (d, m) => (d && m ? `${d}.${m}` : '')
     const from = day(formData.startDay, formData.startMonth)
     const to = day(formData.endDay, formData.endMonth)
@@ -908,13 +899,7 @@ function ResumeModal({ isOpen, onClose }) {
                       <label>Желаемая вакансия</label>
                       <select name="desiredPosition" value={formData.desiredPosition} onChange={handleChange} required>
                         <option value="">---</option>
-                        <option value="waiter">Официант</option>
-                        <option value="bartender">Бармен</option>
-                        <option value="receptionist">Ресепшн</option>
-                        <option value="housekeeping">Горничная</option>
-                        <option value="kitchen">Кухня</option>
-                        <option value="animator">Аниматор</option>
-                        <option value="other">Другое</option>
+                        {POSITIONS.map(([code, ru]) => <option key={code} value={code}>{ru}</option>)}
                       </select>
                     </div>
                   </div>
