@@ -11,8 +11,8 @@
 #   BRANCH      branch to deploy, default main
 #   SKIP_SWAP=1 do not create a swap file (only for test containers)
 #   SSH_PORT    move SSH to this port, in two runs so access is never lost:
-#               SSH_PORT=52022 adds the port next to the current one; after a
-#               login on it works, SSH_PORT=52022 SSH_CLOSE_OLD_PORT=1 closes the old one
+#               SSH_PORT=<порт> adds the port next to the current one; after a
+#               login on it works, SSH_PORT=<порт> SSH_CLOSE_OLD_PORT=1 closes the old one
 #   SSH_KEYS_ONLY=1  no password logins (only when root already has a key)
 #   ADMIN_EMAIL, ADMIN_NAME  the first manager of the cabinet (default buysun@gmail.com)
 set -euo pipefail
