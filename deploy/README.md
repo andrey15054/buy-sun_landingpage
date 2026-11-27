@@ -54,14 +54,14 @@ next update (within 5 minutes) takes `main`.
 Done in steps so access is never lost:
 
 ```bash
-SSH_PORT=52022 bash /opt/buysun/repo/deploy/setup-server.sh      # 22 and 52022 both open
-ssh -p 52022 root@<server>                                         # from your computer: must work
-SSH_PORT=52022 SSH_CLOSE_OLD_PORT=1 bash /opt/buysun/repo/deploy/setup-server.sh   # 22 closed
+SSH_PORT=<порт> bash /opt/buysun/repo/deploy/setup-server.sh      # 22 and <порт> both open
+ssh -p <порт> root@<server>                                         # from your computer: must work
+SSH_PORT=<порт> SSH_CLOSE_OLD_PORT=1 bash /opt/buysun/repo/deploy/setup-server.sh   # 22 closed
 ```
 
-For keys only, first `ssh-copy-id -p 52022 root@<server>` from each computer
+For keys only, first `ssh-copy-id -p <порт> root@<server>` from each computer
 that needs access, check a login without a password, then run the script with
-`SSH_PORT=52022 SSH_KEYS_ONLY=1`. Without a key in `/root/.ssh/authorized_keys`
+`SSH_PORT=<порт> SSH_KEYS_ONLY=1`. Without a key in `/root/.ssh/authorized_keys`
 the script leaves password logins on. If you are locked out anyway, the
 hosting control panel has a console (VNC) that does not go through SSH.
 
