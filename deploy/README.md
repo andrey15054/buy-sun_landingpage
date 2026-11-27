@@ -24,7 +24,7 @@ back by itself after a reboot.
 1. **The server**: Ubuntu 24.04 or 26.04, ordered in the client’s name, root SSH access.
 2. **GitHub access**: nothing while the repository is public, the server reads
    it over HTTPS. If it becomes private, run the script with
-   `REPO_URL=git@github.com:idrisqtt/buy-sun_landingpage.git`: it prints a key
+   `REPO_URL=git@github.com:andrey15054/buy-sun_landingpage.git`: it prints a key
    that the owner adds in Settings → Deploy keys (read-only).
 3. **Work email** for lead copies and problem alerts, and an SMTP mailbox to send from.
 4. **Bitrix24** incoming webhook with the CRM scope (see `server/README.md`).
@@ -35,7 +35,7 @@ back by itself after a reboot.
 
 ```bash
 ssh root@<server>
-git clone https://github.com/idrisqtt/buy-sun_landingpage.git /tmp/buysun   # or copy deploy/setup-server.sh
+git clone https://github.com/andrey15054/buy-sun_landingpage.git /tmp/buysun   # or copy deploy/setup-server.sh
 DOMAIN=buysun.kz bash /tmp/buysun/deploy/setup-server.sh
 ```
 

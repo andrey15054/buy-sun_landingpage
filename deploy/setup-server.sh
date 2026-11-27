@@ -6,7 +6,7 @@
 #
 # Settings (environment variables):
 #   DOMAIN      site address, default buysun.kz
-#   REPO_URL    GitHub repository, default https://github.com/idrisqtt/buy-sun_landingpage.git
+#   REPO_URL    GitHub repository, default https://github.com/andrey15054/buy-sun_landingpage.git
 #               (public: no key needed; a git@github.com:... address makes a deploy key)
 #   BRANCH      branch to deploy, default main
 #   SKIP_SWAP=1 do not create a swap file (only for test containers)
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-buysun.kz}"
-REPO_URL="${REPO_URL:-https://github.com/idrisqtt/buy-sun_landingpage.git}"
+REPO_URL="${REPO_URL:-https://github.com/andrey15054/buy-sun_landingpage.git}"
 BRANCH="${BRANCH:-main}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-buysun@gmail.com}"
 ADMIN_NAME="${ADMIN_NAME:-BUY SUN}"
